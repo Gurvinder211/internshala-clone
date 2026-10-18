@@ -1,5 +1,5 @@
-const mongoose = require("mongoose");
-const Internshipschema = new mongoose.Schema({
+import { Schema, model } from "mongoose";
+const Internshipschema = new Schema({
   title: String,
   company: String,
   location: String,
@@ -17,4 +17,4 @@ const Internshipschema = new mongoose.Schema({
     default: Date.now,
   },
 });
-module.exports=mongoose.model("Internship",Internshipschema)
+export default model("Internship",Internshipschema)

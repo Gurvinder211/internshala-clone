@@ -1,6 +1,6 @@
-const express = require("express");
-const router = express.Router();
-const Internship = require("../Model/Internship");
+import { Router } from "express";
+const router = Router();
+import Internship from "../Model/Internship.js";
 
 router.post("/", async (req, res) => {
   const Internshipdata = new Internship({
@@ -47,4 +47,4 @@ router.get("/:id", async (req, res) => {
     res.status(404).json({ error: "internal server error" });
   }
 });
-module.exports = router;
+export default router;

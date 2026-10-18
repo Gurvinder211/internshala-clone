@@ -1,37 +1,105 @@
 import Footer from "@/Components/Fotter";
+import LoginOtpModal from "@/Components/LoginOtpModal";
 import Navbar from "@/Components/Navbar";
 import "@/styles/globals.css";
 import type { AppProps } from "next/app";
 import { store } from "../store/store";
 import { Provider, useDispatch } from "react-redux";
-import { useEffect } from "react";
+import { appWithTranslation } from "next-i18next/pages";
+import { useEffect, useState } from "react";
 import { auth } from "@/firebase/firebase";
 import { login, logout } from "@/Feature/Userslice";
-import { ToastContainer } from 'react-toastify';
+import axios from "axios";
+import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-export default function App({ Component, pageProps }: AppProps) {
-  function AuthListener() {
-    const dispatch = useDispatch();
-    useEffect(() => {
-      auth.onAuthStateChanged((authuser) => {
-        if (authuser) {
-          dispatch(
-            login({
-              uid: authuser.uid,
-              photo: authuser.photoURL,
-              name: authuser.displayName,
-              email: authuser.email,
-              phoneNumber: authuser.phoneNumber,
-            })
-          );
-        } else {
-          dispatch(logout());
-        }
-      });
-    }, [dispatch]);
-    return null;
-  }
+import enCommon from "../../public/locales/en/common.json";
+import esCommon from "../../public/locales/es/common.json";
+import frCommon from "../../public/locales/fr/common.json";
+import hiCommon from "../../public/locales/hi/common.json";
+import ptCommon from "../../public/locales/pt/common.json";
+import zhCommon from "../../public/locales/zh/common.json";
+import { startSession, installSessionInterceptors, clearLocalSession } from "@/lib/session";
+import { signOut } from "firebase/auth";
 
+const i18nConfig = {
+  i18n: {
+    defaultLocale: "en",
+    locales: ["en", "es", "fr", "hi", "pt", "zh"],
+    localeDetection: false as false,
+  },
+  resources: {
+    en: { common: enCommon },
+    es: { common: esCommon },
+    fr: { common: frCommon },
+    hi: { common: hiCommon },
+    pt: { common: ptCommon },
+    zh: { common: zhCommon },
+  },
+};
+
+function AuthListener() {
+  const dispatch = useDispatch();
+  const [challenge, setChallenge] = useState<{ maskedEmail: string } | null>(null);
+
+  const abandonLogin = async (message?: string) => {
+    clearLocalSession();
+    await signOut(auth).catch(() => {});
+    setChallenge(null);
+    dispatch(logout());
+    if (message) toast.error(message);
+  };
+
+  useEffect(() => {
+    installSessionInterceptors();
+    const onLost = (event: Event) => {
+      const code = (event as CustomEvent).detail?.code;
+      dispatch(logout());
+      toast.info(
+        code === "SESSION_REVOKED"
+          ? "You were signed out because this session was ended from another device."
+          : "Your session expired. Please sign in again."
+      );
+    };
+    window.addEventListener("session-lost", onLost);
+    return () => window.removeEventListener("session-lost", onLost);
+  }, [dispatch]);
+
+  useEffect(() => {
+    const restore = async (hasFirebaseUser: boolean) => {
+      if (!hasFirebaseUser && !localStorage.getItem("authToken")) {
+        dispatch(logout());
+        return;
+      }
+      try {
+        const result = await startSession();
+        if (result.status === "active") dispatch(login(result.user));
+        else if (result.status === "otp_required") setChallenge({ maskedEmail: result.maskedEmail });
+        else await abandonLogin(result.message);
+      } catch (err) {
+        if (axios.isAxiosError(err) && err.response?.status === 401) {
+          if (!hasFirebaseUser) localStorage.removeItem("authToken");
+        } else {
+          toast.error(
+            (axios.isAxiosError(err) && err.response?.data?.error) || "Could not sign you in. Please try again."
+          );
+        }
+        dispatch(logout());
+      }
+    };
+
+    return auth.onAuthStateChanged((u) => void restore(!!u));
+  }, [dispatch]);
+
+  return challenge ? (
+    <LoginOtpModal
+      maskedEmail={challenge.maskedEmail}
+      onVerified={(user) => { dispatch(login(user)); setChallenge(null); }}
+      onCancel={(message) => void abandonLogin(message)}
+    />
+  ) : null;
+}
+
+function App({ Component, pageProps }: AppProps) {
   return (
     <Provider store={store}>
       <AuthListener />
@@ -44,3 +112,4 @@ export default function App({ Component, pageProps }: AppProps) {
     </Provider>
   );
 }
+export default appWithTranslation(App, i18nConfig);

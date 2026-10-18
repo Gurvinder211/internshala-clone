@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination, Autoplay } from "swiper/modules";
+import { serverSideTranslations } from "next-i18next/pages/serverSideTranslations";
+
+// Swiper provides this stylesheet at runtime, but older Swiper type packages
+// do not declare the side-effect import.
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
@@ -13,6 +17,15 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import axios from "axios";
+
+export async function getStaticProps({ locale }: { locale: string }) {
+  return {
+    props: {
+      ...(await serverSideTranslations(locale, ["common"])),
+    },
+  };
+}
+
 
 export default function SvgSlider() {
   const categories = [
@@ -119,8 +132,8 @@ export default function SvgSlider() {
     const fetchdata = async () => {
       try {
         const [internshipres, jobres] = await Promise.all([
-          axios.get("https://internshala-clone-y2p2.onrender.com/api/internship"),
-          axios.get("https://internshala-clone-y2p2.onrender.com/api/job"),
+          axios.get("http://localhost:5000/api/internship"),
+          axios.get("http://localhost:5000/api/job"),
         ]);
         setinternship(internshipres.data);
         setjob(jobres.data);

@@ -63,7 +63,7 @@ const index = () => {
   useEffect(() => {
     const fetchdata = async () => {
       try {
-        const res = await axios.get("https://internshala-clone-y2p2.onrender.com/api/application");
+        const res = await axios.get("http://localhost:5000/api/application");
         setdata(res.data);
       } catch (error) {
         console.log(error);

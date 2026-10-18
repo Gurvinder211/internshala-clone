@@ -1,24 +1,47 @@
-const express = require("express");
-const router = express.Router();
-const application = require("../Model/Application");
+import { Router } from "express";
+import protect from "../middleware/auth.js";
+import { refreshSubscription, consumeQuota, releaseQuota } from "../Services/subscriptionService.js";
 
-router.post("/", async (req, res) => {
-  const applicationipdata = new application({
-    company: req.body.company,
-    category: req.body.category,
-    coverLetter: req.body.coverLetter,
-    user: req.body.user,
-    Application: req.body.Application,
-    body: req.body.body,
-  });
-  await applicationipdata
-    .save()
-    .then((data) => {
-      res.send(data);
-    })
-    .catch((error) => {
-      console.log(error);
-    });
+
+const router = Router();
+import application from "../Model/Application.js";
+
+router.post("/", protect, async (req, res) => {
+try {
+    await refreshSubscription(req.user);
+
+    const allowed = await consumeQuota(req.user._id);
+    if (!allowed) {
+      return res.status(403).json({
+        error: "You've used all your internship applications for this billing cycle. Upgrade your plan or wait for your quota to renew.",
+        code: "QUOTA_EXHAUSTED",
+      });
+    }
+
+    try {
+      const data = await new application({
+        company: req.body.company,
+        category: req.body.category,
+        coverLetter: req.body.coverLetter,
+        // Identity comes from the verified token, not the request body.
+        user: {
+          _id: req.user._id,
+          name: req.user.name,
+          email: req.user.email,
+          photo: req.user.photo,
+        },
+        Application: req.body.Application,
+        body: req.body.body,
+      }).save();
+      return res.send(data);
+    } catch (saveError) {
+      await releaseQuota(req.user._id); // failed save shouldn't cost the user an application
+      throw saveError;
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Could not submit application" });
+  }
 });
 router.get("/", async (req, res) => {
   try {
@@ -69,4 +92,4 @@ router.put("/:id", async (req, res) => {
     res.status(500).json({ error: "internal server error" });
   }
 });
-module.exports = router;
+export default router;

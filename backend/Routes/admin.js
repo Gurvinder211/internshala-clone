@@ -1,5 +1,5 @@
-const express = require("express");
-const router = express.Router();
+import { Router } from "express";
+const router = Router();
 const adminuser = "admin";
 const adminpass = "admin";
 
@@ -11,4 +11,4 @@ router.post("/adminlogin", (req, res) => {
     res.send(401).send("unauthrized");
   }
 });
-module.exports = router;
+export default router;

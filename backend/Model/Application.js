@@ -1,5 +1,5 @@
-const mongoose = require("mongoose");
-const Applicationipschema = new mongoose.Schema({
+import { Schema, model } from "mongoose";
+const Applicationipschema = new Schema({
   company: String,
   category: String,
   coverLetter: String,
@@ -15,4 +15,4 @@ const Applicationipschema = new mongoose.Schema({
   },
   Application: Object,
 });
-module.exports = mongoose.model("Application", Applicationipschema);
+export default model("Application", Applicationipschema);

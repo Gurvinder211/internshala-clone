@@ -1,7 +1,7 @@
-const express = require("express");
-const router = express.Router();
+import { Router } from "express";
+const router = Router();
 
-const Job = require("../Model/Job");
+import Job from "../Model/Job.js";
 
 router.post("/", async (req, res) => {
   const jobdata = new Job({
@@ -47,4 +47,4 @@ router.get("/:id", async (req, res) => {
     res.status(404).json({ error: "internal server error" });
   }
 });
-module.exports=router
+export default router
