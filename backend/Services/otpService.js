@@ -1,6 +1,7 @@
 import { randomInt, createHash } from 'crypto';
 import Otp from '../Model/Otp.js';
 import { sendMail } from './mailer.js';
+import { sendSms } from './sms.js';
 
 const OTP_LENGTH = 6;
 const OTP_TTL_MINUTES = 10;
@@ -93,19 +94,27 @@ async function sendOtp({ userId, purpose, sentTo, channel = 'email' }) {
     expiresAt,
   });
 
-  if (channel === 'email') {
-    const copy = PURPOSE_COPY[purpose];
-    await sendMail({
-      to: sentTo,
-      subject: copy.subject,
-      text: `${copy.line}\n\n${code}\n\nThis code expires in ${OTP_TTL_MINUTES} minutes. If you didn't request this, ignore this email.`,
-      html: `<p>${copy.line}</p><h2 style="letter-spacing:4px">${code}</h2><p>This code expires in ${OTP_TTL_MINUTES} minutes. If you didn't request this, ignore this email.</p>`,
-    });
+  const copy = PURPOSE_COPY[purpose];
+  let deliveryMode = channel === 'email' ? 'email' : 'sms';
+  try {
+    if (channel === 'sms') {
+      const delivery = await sendSms({ to: sentTo, text: `InternArea: ${copy.line} ${code}. Expires in ${OTP_TTL_MINUTES} min.` });
+      deliveryMode = delivery.deliveryMode;
+    } else {
+      const delivery = await sendMail({
+        to: sentTo,
+        subject: copy.subject,
+        text: `${copy.line}\n\n${code}\n\nThis code expires in ${OTP_TTL_MINUTES} minutes. If you didn't request this, ignore this email.`,
+        html: `<p>${copy.line}</p><h2 style="letter-spacing:4px">${code}</h2><p>This code expires in ${OTP_TTL_MINUTES} minutes. If you didn't request this, ignore this email.</p>`,
+      });
+      deliveryMode = delivery.deliveryMode;
+    }
+  } catch (error) {
+    await Otp.updateOne({ userId, purpose, consumed: false, createdAt: { $gte: since } }, { $set: { consumed: true } });
+    throw error;
   }
-  // SMS channel: plug in an SMS provider here when phone-based OTP is needed
-  // (Forgot Password allows phone as an option).
 
-  return { expiresAt, cooldownSeconds: RESEND_COOLDOWN_SECONDS };
+  return { expiresAt, cooldownSeconds: RESEND_COOLDOWN_SECONDS, deliveryMode };
 }
 
 /**
@@ -113,8 +122,14 @@ async function sendOtp({ userId, purpose, sentTo, channel = 'email' }) {
  * failure path so the route can return the right message without leaking
  * which part of the check failed to an attacker.
  */
-async function verifyOtp({ userId, purpose, code }) {
-  const otp = await Otp.findOne({ userId, purpose, consumed: false })
+async function verifyOtp({ userId, purpose, code, channel, sentTo }) {
+  const otp = await Otp.findOne({
+    userId,
+    purpose,
+    consumed: false,
+    ...(channel ? { channel } : {}),
+    ...(sentTo ? { sentTo } : {}),
+  })
     .sort({ createdAt: -1 });
 
   if (!otp) {

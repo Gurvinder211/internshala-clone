@@ -1,27 +1,28 @@
 import { createHash } from 'crypto';
 import { UAParser } from 'ua-parser-js';
+import geoip from 'geoip-lite';
 
-/**
- * Pulls browser/OS/device info from the request's User-Agent header,
- * and the caller's IP. Location is left as a placeholder — wire up
- * a free IP-geo lookup (e.g. geoip-lite, no external calls needed)
- * when you build Feature 5, so both features share the same shape.
- */
+const normalizeIp = (ip = '') => ip.replace(/^::ffff:/, '').replace(/^::1$/, '127.0.0.1');
+
+function describeLocation(ip) {
+  if (!ip || ip === 'unknown') return 'Unknown';
+  if (/^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip)) return 'Local network';
+  const location = geoip.lookup(ip);
+  return location ? [location.city, location.region, location.country].filter(Boolean).join(', ') : 'Unknown';
+}
+
 function getClientContext(req) {
   const uaString = req.headers['user-agent'] || '';
   const parser = new UAParser(uaString);
   const result = parser.getResult();
   const browser = result.browser.name || 'unknown';
-  const deviceId = req.headers['x-device-id'] || createHash('sha256').update(uaString || 'unknown-device').digest('hex');
-
-  const ip =
-    (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
-    req.socket?.remoteAddress ||
-    'unknown';
+  const deviceId = String(req.headers['x-device-id'] || createHash('sha256').update(uaString || 'unknown-device').digest('hex')).slice(0, 64);
+  const ip = normalizeIp(req.ip || req.socket?.remoteAddress || 'unknown');
 
   return {
     ip,
-    deviceId: String(deviceId),
+    location: describeLocation(ip),
+    deviceId,
     isChrome: browser === 'Chrome' || browser === 'Mobile Chrome',
     browser,
     browserVersion: result.browser.version || 'unknown',

@@ -1,5 +1,7 @@
 import { selectuser } from "@/Feature/Userslice";
 import LoginSecurity from "@/Components/LoginSecurity";
+import PhoneNumber from "@/Components/PhoneNumber";
+import ResumeHistory from "@/Components/ResumeHistory";
 import { Download, ExternalLink, FileText, Mail, Plus, User } from "lucide-react";
 import Link from "next/link";
 import React, { useCallback, useEffect, useState } from "react";
@@ -206,6 +208,7 @@ const Profile = () => {
                             {r._id === defaultResumeId && (
                               <span className="rounded bg-green-100 px-2 py-0.5 text-xs text-green-700">Default</span>
                             )}
+                            {r.pdfOutdated && <span className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-700">Edited since PDF</span>}
                           </p>
                           <p className="text-xs text-gray-500">
                             {titleCase(r.template || "classic")} template · {r.status === "generated" ? "PDF ready" : "Draft"} · updated {formatDate(r.updatedAt)}
@@ -239,6 +242,8 @@ const Profile = () => {
                 )}
               </section>
 
+              {!resumesLocked && <ResumeHistory />}
+              <PhoneNumber />
               <LoginSecurity />
             </div>
           </div>

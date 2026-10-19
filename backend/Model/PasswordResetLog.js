@@ -19,6 +19,10 @@ const passwordResetLogSchema = new Schema({
     type: Boolean,
     default: false,
   },
+  deliveryFailed: {
+    type: Boolean,
+    default: false,
+  },
   ip: String,
   browser: String,
   browserVersion: String,

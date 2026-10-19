@@ -32,6 +32,7 @@ try {
         },
         Application: req.body.Application,
         body: req.body.body,
+        resume: req.user.defaultResumeId || null,
       }).save();
       return res.send(data);
     } catch (saveError) {

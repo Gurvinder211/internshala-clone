@@ -5,10 +5,58 @@
     "searchPlaceholder": "Buscar oportunidades...",
     "logout": "Cerrar sesión",
     "continueWithGoogle": "Continuar con Google",
-    "admin": "Administrador"
+    "admin": "Administrador",
+    "login": "Iniciar sesión",
+    "register": "Registrarse",
+    "plans": "Planes",
+    "resumeBuilder": "Creador de CV",
+    "publicSpace": "Espacio público",
+    "friends": "Amigos",
+    "profile": "Perfil"
+  },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "loading": "Cargando...",
+    "submit": "Enviar",
+    "verify": "Verificar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "download": "Descargar",
+    "success": "Éxito",
+    "error": "Error"
+  },
+  "auth": {
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "resetPassword": "Restablecer contraseña",
+    "newPassword": "Nueva contraseña",
+    "currentPassword": "Contraseña actual"
+  },
+  "subscription": {
+    "managePlan": "Gestionar plan",
+    "currentPlan": "Tu plan actual",
+    "monthlyQuota": "Cuota mensual de solicitudes",
+    "unlimited": "Solicitudes ilimitadas"
+  },
+  "resume": {
+    "resumeStudio": "Estudio de CV",
+    "saveDraft": "Guardar borrador",
+    "generatePdf": "Generar PDF",
+    "atsFriendly": "Plantillas compatibles con ATS"
+  },
+  "publicSpace": {
+    "communityFeed": "Feed comunitario",
+    "writePost": "Comparte un hito o pensamiento...",
+    "post": "Publicar",
+    "like": "Me gusta",
+    "comment": "Comentar",
+    "share": "Compartir",
+    "save": "Guardar"
   },
   "toast": {
-    "loginSuccess": "sesión iniciada correctamente",
-    "loginFailed": "error al iniciar sesión"
+    "loginSuccess": "Sesión iniciada correctamente",
+    "loginFailed": "Error al iniciar sesión"
   }
 }

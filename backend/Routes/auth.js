@@ -7,6 +7,7 @@ import { getClientContext } from '../Services/clientContext.js';
 import { logLoginEvent } from '../Services/sessionService.js';
 import { validateStrength, hashPassword, comparePassword } from '../Services/passwordService.js';
 import tokenService from '../Services/tokenService.js';
+import { normalizePhone } from '../Services/phone.js';
 const { issueToken } = tokenService;
 
 const router = express.Router();
@@ -33,6 +34,12 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: strengthError });
     }
 
+    let phone = null;
+    if (req.body.phone) {
+      phone = normalizePhone(req.body.phone);
+      if (!phone) return res.status(400).json({ error: 'Enter a valid mobile number, e.g. +91 98765 43210' });
+    }
+
     const normalizedEmail = email.toLowerCase().trim();
     const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
@@ -47,6 +54,7 @@ router.post('/register', async (req, res) => {
       authProvider: 'local',
       name: name.trim(),
       email: normalizedEmail,
+      phone,
       passwordHash,
       emailVerified: false,
       language: 'en',
@@ -63,6 +71,9 @@ router.post('/register', async (req, res) => {
 
       if (duplicateFields.includes('email')) {
         return res.status(409).json({ error: 'An account with this email already exists' });
+      }
+      if (duplicateFields.includes('phone')) {
+        return res.status(409).json({ error: 'That mobile number is already linked to another account' });
       }
  
       console.error('register duplicate key conflict:', duplicateFields);

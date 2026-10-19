@@ -6,6 +6,7 @@ import protect from '../middleware/auth.js';
 import rateLimit from 'express-rate-limit';
 import Resume from '../Model/Resume.js';
 import ResumeGeneration from '../Model/ResumeGeneration.js';
+import ResumeDownload from '../Model/ResumeDownload.js';
 import User from '../Model/User.js';
 import razorpay from '../Services/razorpay.js';
 import { sendOtp, verifyOtp, OtpError } from '../Services/otpService.js';
@@ -13,6 +14,7 @@ import { refreshSubscription } from '../Services/subscriptionService.js';
 import { generateResumePdf } from '../Services/resumePdf.jsx';
 import { pickEditable } from '../Services/resumeFields.js';
 import { sendMail } from '../Services/mailer.js'; 
+import { getClientContext } from '../Services/clientContext.js';
 
 const router = Router();
 const RESUME_PRICE = 50;
@@ -33,6 +35,21 @@ function invoiceNumber(gen) {
   const ym = `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
   return `RES-${ym}-${gen._id.toString().slice(-6).toUpperCase()}`;
 }
+
+function canonical(value) {
+  if (value === '' || value == null) return undefined;
+  if (Array.isArray(value)) return value.map(canonical);
+  if (typeof value === 'object') {
+    return Object.keys(value).filter((key) => key !== '_id').sort().reduce((result, key) => {
+      const normalized = canonical(value[key]);
+      if (normalized !== undefined) result[key] = normalized;
+      return result;
+    }, {});
+  }
+  return value;
+}
+
+const sameContent = (left, right) => JSON.stringify(canonical(left) ?? null) === JSON.stringify(canonical(right) ?? null);
 
 // Every resume route requires Premium — gate it once, here.
 router.use(protect, async (req, res, next) => {
@@ -55,6 +72,20 @@ router.get('/', async (req, res) => {
   res.json({ resumes, defaultResumeId: req.user.defaultResumeId || null });
 });
 
+router.get('/history', async (req, res) => {
+  try {
+    const [payments, downloads] = await Promise.all([
+      ResumeGeneration.find({ userId: req.user._id, status: 'PAID' })
+        .sort({ paidAt: -1 }).limit(50).select('-razorpaySignature -__v').populate('resumeId', 'title template'),
+      ResumeDownload.find({ userId: req.user._id }).sort({ createdAt: -1 }).limit(50).populate('resumeId', 'title'),
+    ]);
+    res.json({ payments, downloads });
+  } catch (err) {
+    console.error('resume history failed:', err);
+    res.status(500).json({ error: 'Could not load resume history' });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   const resume = await Resume.findOne({ _id: req.params.id, userId: req.user._id });
   if (!resume) return res.status(404).json({ error: 'Resume not found' });
@@ -62,21 +93,24 @@ router.get('/:id', async (req, res) => {
 });
 
 router.patch('/:id', async (req, res) => {
-  const resume = await Resume.findOneAndUpdate(
-    { _id: req.params.id, userId: req.user._id },
-    { $set: pickEditable(req.body) },
-    { new: true, runValidators: true }
-  );
-  if (!resume) return res.status(404).json({ error: 'Resume not found' });
-  // Editing after a paid generation invalidates the PDF on file — it no
-  // longer matches what was paid for, so don't let a stale link stand in
-  // for the new content.
-  if (resume.status === 'generated') {
-    resume.status = 'draft';
-    resume.pdfUrl = null;
+  try {
+    const resume = await Resume.findOne({ _id: req.params.id, userId: req.user._id });
+    if (!resume) return res.status(404).json({ error: 'Resume not found' });
+
+    const updates = pickEditable(req.body);
+    const current = resume.toObject();
+    const changed = Object.keys(updates).some((key) => !sameContent(current[key], updates[key]));
+    if (!changed) return res.json({ resume });
+
+    resume.set(updates);
+    if (resume.status === 'generated') resume.pdfOutdated = true;
     await resume.save();
+    res.json({ resume });
+  } catch (err) {
+    if (err.name === 'ValidationError') return res.status(400).json({ error: err.message });
+    console.error('resume update failed:', err);
+    res.status(500).json({ error: 'Could not save resume' });
   }
-  res.json({ resume });
 });
 
 router.post('/:id/set-default', async (req, res) => {
@@ -212,7 +246,11 @@ router.post('/:id/generate/verify-payment', payLimiter, async (req, res) => {
     resume.pdfUrl = filename; // store the filename; the download route resolves the real path
     resume.pdfGeneratedAt = new Date();
     resume.paid = true;
+    resume.pdfOutdated = false;
     await resume.save();
+
+    req.user.defaultResumeId = resume._id;
+    await req.user.save();
 
     await ResumeGeneration.findByIdAndUpdate(current._id, { $set: { activated: true } });
 
@@ -251,6 +289,15 @@ router.get('/:id/download', async (req, res) => {
 
   const safeFile = path.basename(resume.pdfUrl);
   const filePath = path.join(STORAGE_DIR, safeFile);
+  const ctx = getClientContext(req);
+  ResumeDownload.create({
+    userId: req.user._id,
+    resumeId: resume._id,
+    ip: ctx.ip,
+    browser: ctx.browser,
+    os: ctx.os,
+    deviceType: ctx.deviceType,
+  }).catch((err) => console.error('resume download history failed:', err));
   res.download(filePath, `${resume.personal?.fullName || 'resume'}.pdf`);
 });
 

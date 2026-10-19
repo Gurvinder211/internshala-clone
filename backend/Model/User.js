@@ -111,6 +111,10 @@ const userSchema = new Schema({
   lastPasswordResetAt: {
     type: Date,
     default: null
+  },
+  lastPasswordResetRequestedAt: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true // Automatically creates createdAt and updatedAt fields
@@ -120,6 +124,7 @@ const userSchema = new Schema({
 // Unique indexes explicitly added for lookup performance optimization
 userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ firebaseUid: 1 }, { unique: true, sparse: true }); // Sparse allows for null values in firebaseUid
+userSchema.index({ phone: 1 }, { unique: true, partialFilterExpression: { phone: { $type: 'string' } } });
 
 const User = model('User', userSchema);
 

@@ -1,11 +1,59 @@
 {
   "navbar": {
-    "internships": "实习",
-    "jobs": "职位",
-    "searchPlaceholder": "搜索机会...",
+    "internships": "实习机会",
+    "jobs": "全职工作",
+    "searchPlaceholder": "搜索职位与机会...",
     "logout": "退出登录",
     "continueWithGoogle": "使用 Google 继续",
-    "admin": "管理员"
+    "admin": "管理员",
+    "login": "登录",
+    "register": "注册",
+    "plans": "会员计划",
+    "resumeBuilder": "简历构建器",
+    "publicSpace": "公共广场",
+    "friends": "好友",
+    "profile": "个人主页"
+  },
+  "common": {
+    "save": "保存",
+    "cancel": "取消",
+    "loading": "加载中...",
+    "submit": "提交",
+    "verify": "验证",
+    "delete": "删除",
+    "edit": "编辑",
+    "download": "下载",
+    "success": "成功",
+    "error": "错误"
+  },
+  "auth": {
+    "email": "邮箱地址",
+    "password": "密码",
+    "forgotPassword": "忘记密码？",
+    "resetPassword": "重置密码",
+    "newPassword": "新密码",
+    "currentPassword": "当前密码"
+  },
+  "subscription": {
+    "managePlan": "管理会员",
+    "currentPlan": "当前方案",
+    "monthlyQuota": "每月申请配额",
+    "unlimited": "无限投递"
+  },
+  "resume": {
+    "resumeStudio": "简历工作室",
+    "saveDraft": "保存草稿",
+    "generatePdf": "生成 PDF",
+    "atsFriendly": "ATS 友好模版"
+  },
+  "publicSpace": {
+    "communityFeed": "社区动态",
+    "writePost": "分享一个项目成果或想法...",
+    "post": "发布",
+    "like": "赞",
+    "comment": "评论",
+    "share": "分享",
+    "save": "收藏"
   },
   "toast": {
     "loginSuccess": "登录成功",

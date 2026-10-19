@@ -18,6 +18,8 @@ const firebaseConfig = {
   measurementId: "G-W7GHEGFBBW"
 };
 
+export const isFirebaseConfigured = Boolean(firebaseConfig.apiKey);
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 let analytics;

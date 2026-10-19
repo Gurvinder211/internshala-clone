@@ -4,14 +4,69 @@ import { useDispatch } from "react-redux";
 import { ArrowRight, Check, Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react";
 import axios from "axios";
 import { login } from "@/Feature/Userslice";
+import { signInWithPopup } from "firebase/auth";
+import { auth, isFirebaseConfigured, provider } from "@/firebase/firebase";
+import { startSession } from "@/lib/session";
+import LoginOtpModal from "@/Components/LoginOtpModal";
 
 export default function Register() {
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", password: "" });
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+  const [challenge, setChallenge] = useState<{ maskedEmail: string; deliveryMode?: "email" | "console" } | null>(null);
   const dispatch = useDispatch();
   const router = useRouter();
+
+  const handleGoogleSignUp = async () => {
+    setError("");
+    if (!isFirebaseConfigured) {
+      setError("Google sign-up is not configured. Set NEXT_PUBLIC_FIREBASE_API_KEY in internarea/.env.");
+      return;
+    }
+
+    setIsGoogleSubmitting(true);
+    try {
+      await signInWithPopup(auth, provider);
+      const result = await startSession();
+      if (result.status === "active") {
+        dispatch(login(result.user));
+        await router.push("/");
+      } else if (result.status === "otp_required") {
+        setError(result.deliveryMode === "console"
+          ? "Email delivery is not configured. Check the backend terminal for the development verification code."
+          : `A verification code was sent to ${result.maskedEmail}. Complete the verification prompt to finish sign-up.`);
+      } else {
+        setError(result.message || "Google sign-up is currently unavailable.");
+      }
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        if (!err.response) {
+          setError("Google account connected, but the backend could not be reached at http://localhost:5000.");
+        } else if (err.response.status === 401) {
+          const firebaseError = err.response.data?.firebaseError;
+          setError(firebaseError
+            ? `Google connected, but Firebase Admin rejected the ID token: ${firebaseError}. Check that the frontend Firebase project and backend Firebase Admin project match.`
+            : "Google connected, but the backend rejected the ID token. Restart the backend and retry so it reports the Firebase verification error.");
+        } else {
+          setError(err.response.data?.error || err.response.data?.message || "Could not finish Google sign-up. Check the backend and try again.");
+        }
+      } else {
+        const code = typeof err === "object" && err && "code" in err ? String(err.code) : "";
+        const messages: Record<string, string> = {
+          "auth/unauthorized-domain": "This site is not authorized for Firebase sign-in. Add its hostname under Firebase Authentication > Settings > Authorized domains.",
+          "auth/operation-not-allowed": "Google sign-in is disabled. Enable Google under Firebase Authentication > Sign-in method.",
+          "auth/invalid-api-key": "The Firebase API key is invalid or belongs to a different project.",
+          "auth/popup-blocked": "Your browser blocked the Google sign-in popup. Allow pop-ups and try again.",
+          "auth/popup-closed-by-user": "Google sign-up was canceled.",
+        };
+        setError(messages[code] || `Google sign-up failed${code ? ` (${code})` : ""}. Check your Firebase Authentication settings and try again.`);
+      }
+    } finally {
+      setIsGoogleSubmitting(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,9 +89,20 @@ export default function Register() {
         email: form.email.trim().toLowerCase(),
       });
       localStorage.setItem("authToken", data.token);
-      dispatch(login(data.user));
-      router.push("/");
+      const result = await startSession();
+      if (result.status === "active") {
+        dispatch(login(result.user));
+        await router.push("/");
+      } else if (result.status === "otp_required") {
+        setChallenge({ maskedEmail: result.maskedEmail, deliveryMode: result.deliveryMode });
+      } else {
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("sessionId");
+        setError(`Your account was created. ${result.message}`);
+      }
     } catch (err: unknown) {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("sessionId");
       if (axios.isAxiosError(err)) {
         setError(err.response?.data?.error || "Registration failed. Please try again.");
       } else {
@@ -90,6 +156,24 @@ export default function Register() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
+              {error && <p className="rounded-xl border border-[#f2caca] bg-[#fff4f3] px-4 py-3 text-sm text-[#b13b37]" role="alert">{error}</p>}
+
+              <button
+                type="button"
+                onClick={() => void handleGoogleSignUp()}
+                disabled={isGoogleSubmitting || isSubmitting}
+                className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-[#d9e0d9] bg-white px-5 text-sm font-semibold text-[#24352c] transition hover:bg-[#f7f9f6] focus:outline-none focus:ring-4 focus:ring-[#557d5e]/10 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isGoogleSubmitting ? <Loader2 size={18} className="animate-spin" /> : <span aria-hidden="true" className="text-base font-bold text-[#4285F4]">G</span>}
+                Continue with Google
+              </button>
+
+              <div className="flex items-center gap-3" aria-hidden="true">
+                <span className="h-px flex-1 bg-[#e5eae4]" />
+                <span className="text-xs text-[#87928a]">or use your email</span>
+                <span className="h-px flex-1 bg-[#e5eae4]" />
+              </div>
+
               <label className="block">
                 <span className="mb-2 block text-sm font-semibold text-[#304139]">Full name</span>
                 <input
@@ -112,6 +196,17 @@ export default function Register() {
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   autoComplete="email"
                   required
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-semibold text-[#304139]">
+                  Mobile number <span className="font-normal text-[#738078]">(optional, for password recovery)</span>
+                </span>
+                <input
+                  className="h-12 w-full rounded-xl border border-[#d9e0d9] bg-[#fbfcfa] px-4 text-sm text-[#1c2b25] outline-none transition placeholder:text-[#9aa79e] focus:border-[#557d5e] focus:ring-4 focus:ring-[#557d5e]/10"
+                  placeholder="+91 98765 43210" type="tel" autoComplete="tel"
+                  value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 />
               </label>
 
@@ -139,11 +234,9 @@ export default function Register() {
                 <span className="mt-2 block text-xs text-[#7d8982]">At least 8 characters, including uppercase, lowercase, and a number.</span>
               </label>
 
-              {error && <p className="rounded-xl border border-[#f2caca] bg-[#fff4f3] px-4 py-3 text-sm text-[#b13b37]" role="alert">{error}</p>}
-
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isGoogleSubmitting}
                 className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#173b35] px-5 text-sm font-semibold text-white transition hover:bg-[#28584e] focus:outline-none focus:ring-4 focus:ring-[#557d5e]/20 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <>Create account <ArrowRight size={18} /></>}
@@ -157,6 +250,19 @@ export default function Register() {
           </div>
         </section>
       </div>
+      {challenge && (
+        <LoginOtpModal
+          maskedEmail={challenge.maskedEmail}
+          deliveryMode={challenge.deliveryMode}
+          onVerified={(user) => { dispatch(login(user)); setChallenge(null); void router.push("/"); }}
+          onCancel={(message) => {
+            localStorage.removeItem("authToken");
+            localStorage.removeItem("sessionId");
+            setChallenge(null);
+            if (message) setError(message);
+          }}
+        />
+      )}
     </main>
   );
 }

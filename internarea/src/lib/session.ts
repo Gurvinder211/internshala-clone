@@ -6,7 +6,7 @@ export const API_BASE = "http://localhost:5000/api";
 
 export type SessionResult =
   | { status: "active"; sessionId: string; user: any }
-  | { status: "otp_required"; sessionId: string; maskedEmail: string; cooldownSeconds?: number }
+  | { status: "otp_required"; sessionId: string; maskedEmail: string; cooldownSeconds?: number; deliveryMode?: "email" | "console" }
   | { status: "blocked"; code: string; message: string };
 
 export function getDeviceId(): string {

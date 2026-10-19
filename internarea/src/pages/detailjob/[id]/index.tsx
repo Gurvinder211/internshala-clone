@@ -16,6 +16,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { useSelector } from "react-redux";
 import { selectuser } from "@/Feature/Userslice";
+import api from "@/lib/api";
 // const filteredJobs = [
 //     {
 //       _id: "101",
@@ -157,19 +158,20 @@ const index = () => {
         category: jobdata.category,
         company: jobdata.company,
         coverLetter: coverLetter,
-        user: user,
         Application: id,
         availability,
       };
-      await axios.post(
-        "http://localhost:5000/api/application",
-        applicationdata
-      );
-      toast.success("Application submit successfully");
+      await api.post("/application", applicationdata);
+      toast.success("Application submitted successfully");
       router.push("/job");
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error("Failed to submit application");
+      if (error?.response?.data?.code === "QUOTA_EXHAUSTED") {
+        toast.error(error?.response?.data?.error || "Subscription limit reached. Upgrade your plan to apply.");
+        router.push("/subscription");
+      } else {
+        toast.error(error?.response?.data?.error || "Failed to submit application");
+      }
     }
   };
   return (

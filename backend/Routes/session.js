@@ -35,12 +35,19 @@ router.post('/session', authenticate, async (req, res) => {
       return res.json({
         status: 'otp_required', sessionId: result.session.sessionId,
         maskedEmail: maskEmail(req.user.email), cooldownSeconds: 60,
+        deliveryMode: result.deliveryMode || result.session.otpDeliveryMode || 'email',
       });
     }
     res.json({ status: 'active', sessionId: result.session.sessionId, user: sanitize(req.user) });
   } catch (err) {
     if (err instanceof OtpError) return res.status(429).json({ error: err.message, code: err.code });
     console.error('start session failed:', err);
+    if (err.code === 'EAUTH') {
+      return res.status(503).json({
+        error: 'Email provider rejected the SMTP credentials. Check SMTP_USER and use a current Gmail App Password in SMTP_PASS.',
+        code: 'SMTP_AUTH_FAILED',
+      });
+    }
     res.status(500).json({ error: 'Could not start your session' });
   }
 });
@@ -89,13 +96,22 @@ router.post('/session/resend-otp', authenticate, async (req, res) => {
     if (!session || session.status !== 'pending') {
       return res.status(400).json({ error: 'No sign-in in progress. Please sign in again.', code: 'SESSION_REQUIRED' });
     }
-    const { cooldownSeconds } = await sendOtp({ userId: req.user._id, purpose: 'LOGIN_VERIFY', sentTo: req.user.email });
-    await Session.updateOne({ _id: session._id }, { $set: { expiresAt: new Date(Date.now() + 30 * 60 * 1000) } });
+    const { cooldownSeconds, deliveryMode } = await sendOtp({ userId: req.user._id, purpose: 'LOGIN_VERIFY', sentTo: req.user.email });
+    await Session.updateOne({ _id: session._id }, { $set: {
+      expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+      otpDeliveryMode: deliveryMode,
+    } });
     await logLoginEvent(req.user, ctx, { status: 'OTP_SENT', sessionId: session.sessionId, method: session.method, otpRequired: true, reason: 'resend' });
-    res.json({ success: true, cooldownSeconds });
+    res.json({ success: true, cooldownSeconds, deliveryMode });
   } catch (err) {
     if (err instanceof OtpError) return res.status(429).json({ error: err.message, code: err.code });
     console.error('resend login otp failed:', err);
+    if (err.code === 'EAUTH') {
+      return res.status(503).json({
+        error: 'Email provider rejected the SMTP credentials. Check SMTP_USER and use a current Gmail App Password in SMTP_PASS.',
+        code: 'SMTP_AUTH_FAILED',
+      });
+    }
     res.status(500).json({ error: 'Could not resend the code' });
   }
 });
@@ -154,7 +170,6 @@ router.get('/login-history', protect, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 30, 100);
   const filter = { userId: req.user._id };
   if (req.query.before) filter.createdAt = { $lt: new Date(String(req.query.before)) };
-  const history = await Session.default ? [] : [];
   const logs = await (await import('../Model/LoginHistory.js')).default.find(filter).sort({ createdAt: -1 }).limit(limit).select('-__v');
   res.json({ history: logs });
 });

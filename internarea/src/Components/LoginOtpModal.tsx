@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { resendSessionOtp, verifySessionOtp } from "@/lib/session";
 
-export default function LoginOtpModal({ maskedEmail, onVerified, onCancel }: {
+export default function LoginOtpModal({ maskedEmail, deliveryMode = "email", onVerified, onCancel }: {
   maskedEmail: string;
+  deliveryMode?: "email" | "console";
   onVerified: (user: any) => void;
   onCancel: (message?: string) => void;
 }) {
@@ -43,6 +44,9 @@ export default function LoginOtpModal({ maskedEmail, onVerified, onCancel }: {
     try {
       const data = await resendSessionOtp();
       setCooldown(data.cooldownSeconds || 60);
+      if (data.deliveryMode === "console") {
+        setError("Email delivery is not configured. The new code was printed in the backend terminal.");
+      }
     } catch (err: any) {
       setError(err?.response?.data?.error || "Could not resend the code");
     }
@@ -53,7 +57,9 @@ export default function LoginOtpModal({ maskedEmail, onVerified, onCancel }: {
       <form onSubmit={submit} className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
         <h2 className="text-lg font-semibold text-gray-900">Verify it's you</h2>
         <p className="mt-1 text-sm text-gray-600">
-          We sent a 6-digit code to {maskedEmail}. Enter it to finish signing in.
+          {deliveryMode === "console"
+            ? "Email delivery is not configured. In development, the 6-digit code was printed in the backend terminal."
+            : `A 6-digit code was sent to ${maskedEmail}. Check your inbox and spam folder, then enter it to finish signing in.`}
         </p>
         <input
           autoFocus inputMode="numeric" autoComplete="one-time-code" maxLength={6}

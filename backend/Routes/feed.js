@@ -13,11 +13,15 @@ function visibleTo(user) {
   };
 }
 
-// GET /api/feed?cursor=<ISO date>
+// GET /api/feed?cursor=<ISO date>&tag=<hashtag>
 router.get('/', protect, async (req, res) => {
   try {
     const cursor = req.query.cursor ? new Date(req.query.cursor) : new Date();
+    const tag = req.query.tag ? String(req.query.tag).toLowerCase().replace(/^#/, '') : null;
     const base = { ...visibleTo(req.user), createdAt: { $lt: cursor } };
+    if (tag) {
+      base.hashtags = tag;
+    }
 
     // Friends' posts first
     const friendsPosts = await Post.find({ ...base, userId: { $in: [...req.user.friends, req.user._id] } })
@@ -47,6 +51,11 @@ router.get('/', protect, async (req, res) => {
     }
 
     const posts = [...friendsPosts, ...rest];
+    if (posts.length > 0) {
+      const postIds = posts.map((p) => p._id);
+      Post.updateMany({ _id: { $in: postIds } }, { $inc: { viewCount: 1 } }).catch(() => {});
+    }
+
     res.json({ posts, nextCursor: posts.length ? posts[posts.length - 1].createdAt : null });
   } catch (err) {
     console.error('feed failed:', err);

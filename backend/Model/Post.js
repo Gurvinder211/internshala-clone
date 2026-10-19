@@ -26,6 +26,5 @@ const postSchema = new Schema({
 
 postSchema.index({ userId: 1, createdAt: -1 });
 postSchema.index({ privacy: 1, createdAt: -1 });
-postSchema.index({ hashtags: 1 });
 
 export default model('Post', postSchema);

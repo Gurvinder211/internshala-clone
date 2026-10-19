@@ -1,4 +1,4 @@
-import admin from 'firebase-admin';
+import { getAuth } from 'firebase-admin/auth';
 import jwt from 'jsonwebtoken';
 import User from '../Model/User.js';
 import Session from '../Model/Session.js';
@@ -13,7 +13,7 @@ async function identify(req) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
   const token = authHeader.split(' ')[1];
 
-  let user = await tryFirebase(token);
+  let user = await tryFirebase(token, req);
   let method = 'google';
   if (!user) {
     user = await tryLocalJwt(token);
@@ -35,13 +35,19 @@ async function identify(req) {
 export const authenticate = async (req, res, next) => {
   try {
     const found = await identify(req);
-    if (!found) return res.status(401).json({ message: 'Unauthorized: Invalid token.', code: 'INVALID_TOKEN' });
+    if (!found) {
+      return res.status(401).json({
+        message: 'Unauthorized: Invalid token.',
+        code: 'INVALID_TOKEN',
+        firebaseError: req.firebaseTokenError,
+      });
+    }
     req.user = found.user;
     req.authMethod = found.method;
     next();
   } catch (error) {
     console.error('Auth Middleware Error:', error);
-    res.status(401).json({ message: 'Unauthorized: Invalid token.', code: 'INVALID_TOKEN' });
+    res.status(500).json({ message: 'Could not load the authenticated user.', code: 'AUTH_LOOKUP_FAILED' });
   }
 };
 
@@ -72,47 +78,55 @@ const protect = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('Auth Middleware Error:', error);
-    res.status(401).json({ message: 'Unauthorized: Invalid token.', code: 'INVALID_TOKEN' });
+    res.status(500).json({ message: 'Could not load the authenticated user.', code: 'AUTH_LOOKUP_FAILED' });
   }
 };
 
-async function tryFirebase(token) {
+async function tryFirebase(token, req) {
+  let decoded;
   try {
-    const decoded = await admin.auth().verifyIdToken(token);
-    const { uid, name, email, email_verified, picture } = decoded;
-    const normalizedEmail = email.toLowerCase();
-
-    let user = await User.findOne({ firebaseUid: uid });
-    if (!user) {
-      user = await User.findOneAndUpdate(
-        { email: normalizedEmail },
-        {
-          $setOnInsert: { authProvider: 'google', passwordHash: null, mustChangePassword: false },
-          $set: {
-            firebaseUid: uid,
-            name: name || normalizedEmail.split('@')[0],
-            emailVerified: email_verified || false,
-            photo: picture || null,
-          },
-        },
-        { new: true, upsert: true, runValidators: true }
-      );
-    } else {
-      const changed =
-        (name && user.name !== name) ||
-        user.emailVerified !== !!email_verified ||
-        (picture && user.photo !== picture);
-      if (changed) {
-        user.name = name || user.name;
-        user.emailVerified = email_verified || user.emailVerified;
-        user.photo = picture || user.photo;
-        await user.save();
-      }
-    }
-    return user;
-  } catch {
-    return null; // not a valid Firebase token — let the JWT path try
+    decoded = await getAuth().verifyIdToken(token);
+  } catch (error) {
+    req.firebaseTokenError = error.code || error.message?.slice(0, 240) || 'unknown';
+    console.error('Firebase ID token verification failed:', req.firebaseTokenError);
+    return null;
   }
+
+  const { uid, name, email, email_verified, picture } = decoded;
+  if (!email) {
+    console.error('Firebase ID token has no email claim:', uid);
+    return null;
+  }
+  const normalizedEmail = email.toLowerCase();
+
+  let user = await User.findOne({ firebaseUid: uid });
+  if (!user) {
+    user = await User.findOneAndUpdate(
+      { email: normalizedEmail },
+      {
+        $setOnInsert: { authProvider: 'google', passwordHash: null, mustChangePassword: false },
+        $set: {
+          firebaseUid: uid,
+          name: name || normalizedEmail.split('@')[0],
+          emailVerified: email_verified || false,
+          photo: picture || null,
+        },
+      },
+      { new: true, upsert: true, runValidators: true }
+    );
+  } else {
+    const changed =
+      (name && user.name !== name) ||
+      user.emailVerified !== !!email_verified ||
+      (picture && user.photo !== picture);
+    if (changed) {
+      user.name = name || user.name;
+      user.emailVerified = email_verified || user.emailVerified;
+      user.photo = picture || user.photo;
+      await user.save();
+    }
+  }
+  return user;
 }
 
 async function tryLocalJwt(token) {

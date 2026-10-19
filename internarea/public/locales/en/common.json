@@ -4,13 +4,59 @@
     "jobs": "Jobs",
     "searchPlaceholder": "Search opportunities...",
     "logout": "Logout",
-    "continueWithGoogle": "Continue with google",
+    "continueWithGoogle": "Continue with Google",
     "admin": "Admin",
     "login": "Login",
-    "register": "Register"
-  }, 
+    "register": "Register",
+    "plans": "Plans",
+    "resumeBuilder": "Resume Builder",
+    "publicSpace": "Public Space",
+    "friends": "Friends",
+    "profile": "Profile"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "loading": "Loading...",
+    "submit": "Submit",
+    "verify": "Verify",
+    "delete": "Delete",
+    "edit": "Edit",
+    "download": "Download",
+    "success": "Success",
+    "error": "Error"
+  },
+  "auth": {
+    "email": "Email Address",
+    "password": "Password",
+    "forgotPassword": "Forgot Password?",
+    "resetPassword": "Reset Password",
+    "newPassword": "New Password",
+    "currentPassword": "Current Password"
+  },
+  "subscription": {
+    "managePlan": "Manage Plan",
+    "currentPlan": "Your Current Plan",
+    "monthlyQuota": "Monthly Application Quota",
+    "unlimited": "Unlimited Applications"
+  },
+  "resume": {
+    "resumeStudio": "Resume Studio",
+    "saveDraft": "Save Draft",
+    "generatePdf": "Generate PDF",
+    "atsFriendly": "ATS-friendly Templates"
+  },
+  "publicSpace": {
+    "communityFeed": "Community Feed",
+    "writePost": "Share a milestone or thought...",
+    "post": "Post",
+    "like": "Like",
+    "comment": "Comment",
+    "share": "Share",
+    "save": "Save"
+  },
   "toast": {
-    "loginSuccess": "logged in successfully",
-    "loginFailed": "login failed"
+    "loginSuccess": "Logged in successfully",
+    "loginFailed": "Login failed"
   }
 }

@@ -94,6 +94,20 @@ router.post('/french/verify-otp', protect, async (req, res) => {
     console.error('french otp verify failed:', err);
     res.status(500).json({ error: 'Could not verify code' });
   }
-}); 
+});
+
+// GET /api/language/history
+router.get('/history', protect, async (req, res) => {
+  try {
+    const logs = await LanguageChangeLog.find({ userId: req.user._id })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .select('-__v');
+    res.status(200).json({ history: logs });
+  } catch (err) {
+    console.error('language history failed:', err);
+    res.status(500).json({ error: 'Could not load language history' });
+  }
+});
 
 export default router;

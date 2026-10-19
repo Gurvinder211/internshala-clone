@@ -1,13 +1,14 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "next-i18next/pages";
-import { auth, provider } from "../firebase/firebase";
+import { auth, isFirebaseConfigured, provider } from "../firebase/firebase";
 import { Menu, Search, UserRound, X } from "lucide-react";
 import { signInWithPopup, signOut } from "firebase/auth";
 import { toast } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
 import { logout, selectuser } from "@/Feature/Userslice";
 import LanguageSwitcher from "@/Components/LanguageSwitcher";
+import NotificationsDropdown from "@/Components/NotificationsDropdown";
 import api from "@/lib/api";
 import { clearLocalSession } from "@/lib/session";
 
@@ -17,11 +18,26 @@ const Navbar = () => {
   const dispatch = useDispatch();
   const [mobileOpen, setMobileOpen] = useState(false);
   const handlelogin = async () => {
+    if (!isFirebaseConfigured) {
+      toast.error("Google sign-in is not configured. Add NEXT_PUBLIC_FIREBASE_API_KEY to internarea/.env.local.");
+      return;
+    }
+
     try {
       await signInWithPopup(auth, provider);
     } catch (error) {
       console.error(error);
-      toast.error("login failed");
+      const code = typeof error === "object" && error && "code" in error ? String(error.code) : "unknown";
+      const message = code === "auth/unauthorized-domain"
+        ? "Add this site to Firebase Authentication's authorized domains."
+        : code === "auth/operation-not-allowed"
+          ? "Enable Google as a sign-in provider in Firebase Authentication."
+          : code === "auth/invalid-api-key" || code === "auth/api-key-not-valid"
+            ? "The Firebase API key is invalid or belongs to another project."
+            : code === "auth/popup-blocked"
+              ? "Allow pop-ups for this site, then try Google sign-in again."
+              : `Google sign-in failed (${code}). Check your Firebase configuration.`;
+      toast.error(message);
     }
   };
   const handlelogout = async () => {
@@ -51,27 +67,27 @@ const Navbar = () => {
               </button>
               <button className="flex items-center space-x-1 text-gray-700 hover:text-blue-600">
                 <Link href={"/job"}>
-                  <span>{t("Jobs")}</span>
+                  <span>{t("navbar.jobs")}</span>
                 </Link>
               </button>
               {user && (
               <>
                 <button className="flex items-center space-x-1 text-gray-700 hover:text-blue-600">
                  <Link href={"/subscription"}>
-                <span>{t("Plans")}</span>
+                <span>{t("navbar.plans")}</span>
                   </Link>
                  </button>
                  <button className="flex items-center space-x-1 text-gray-700 hover:text-blue-600">
                    <Link href={"/resume-builder/new"}>
-                   <span>{t("Resume Builder")}</span>
+                   <span>{t("navbar.resumeBuilder")}</span>
                    </Link>
                   </button>
                   <button className="flex items-center space-x-1 text-gray-700 hover:text-blue-600">
-  <Link href={"/public-space"}><span>{t("Public Space")}</span></Link>
+  <Link href={"/public-space"}><span>{t("navbar.publicSpace")}</span></Link>
 </button>
 <button className="flex items-center space-x-1 text-gray-700 hover:text-blue-600">
   <Link href={"/friends"}>
-    <span>{t("Friends")}{typeof user.friendCount === "number" ? ` (${user.friendCount})` : ""}</span>
+    <span>{t("navbar.friends")}{typeof user.friendCount === "number" ? ` (${user.friendCount})` : ""}</span>
   </Link>
 </button>
                 </>
@@ -86,7 +102,7 @@ const Navbar = () => {
                 <Search size={16} className="text-gray-400" />
                 <input
                   type="text"
-                  placeholder={t("Search opportunities...")}
+                  placeholder={t("navbar.searchPlaceholder")}
                   className="ml-2 bg-transparent focus:outline-none text-sm w-48"
                 />
               </div>
@@ -95,6 +111,7 @@ const Navbar = () => {
             {/* Language and auth controls */}
             <div className="hidden items-center space-x-4 md:flex">
               <LanguageSwitcher />
+              {user && <NotificationsDropdown />}
               {user ? (
                 <div className="relative flex">
                   <Link
@@ -115,7 +132,7 @@ const Navbar = () => {
                     className="flex items-center w-full px-4 py-2  text-gray-700  hover:bg-gray-200 rounded-lg"
                     onClick={handlelogout}
                   >
-                    {t("Logout")}
+                    {t("navbar.logout")}
                   </button>
                 </div>
               ) : (
@@ -142,18 +159,18 @@ const Navbar = () => {
                         d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                       />
                     </svg>
-                    <span className="text-gray-700">{t("Continue with google")}</span>
+                    <span className="text-gray-700">{t("navbar.continueWithGoogle")}</span>
                   </button>
       {/* new: email/password entry points */}
       <Link href="/login"
         className="text-gray-600 hover:text-gray-800 px-3 py-2">
-        {t("Login")}
+        {t("navbar.login")}
       </Link>
       <Link
         href="/register"
         className="bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-700"
       >
-        {t("Register")}
+        {t("navbar.register")}
       </Link>
                   <a
                     href="/adminlogin"
@@ -183,21 +200,24 @@ const Navbar = () => {
                   {t("navbar.internships")}
                 </Link>
                 <Link href="/job" onClick={() => setMobileOpen(false)} className="rounded px-3 py-2 hover:bg-gray-50">
-                  {t("Jobs")}
+                  {t("navbar.jobs")}
                 </Link>
                 {user && (
                   <>
                     <Link href="/subscription" onClick={() => setMobileOpen(false)} className="rounded px-3 py-2 hover:bg-gray-50">
-                      {t("Plans")}
+                      {t("navbar.plans")}
                     </Link>
                     <Link href="/resume-builder/new" onClick={() => setMobileOpen(false)} className="rounded px-3 py-2 hover:bg-gray-50">
-                      {t("Resume Builder")}
+                      {t("navbar.resumeBuilder")}
                     </Link>
                     <Link href="/public-space" onClick={() => setMobileOpen(false)} className="rounded px-3 py-2 hover:bg-gray-50">
-                      {t("Public Space")}
+                      {t("navbar.publicSpace")}
+                    </Link>
+                    <Link href="/friends" onClick={() => setMobileOpen(false)} className="rounded px-3 py-2 hover:bg-gray-50">
+                      {t("navbar.friends")}{typeof user.friendCount === "number" ? ` (${user.friendCount})` : ""}
                     </Link>
                     <Link href="/profile" onClick={() => setMobileOpen(false)} className="rounded px-3 py-2 hover:bg-gray-50">
-                      {t("Profile")}
+                      {t("navbar.profile")}
                     </Link>
                   </>
                 )}
@@ -206,28 +226,29 @@ const Navbar = () => {
                 <Search size={16} className="shrink-0 text-gray-400" />
                 <input
                   type="search"
-                  placeholder={t("Search opportunities...")}
+                  placeholder={t("navbar.searchPlaceholder")}
                   className="ml-2 min-w-0 flex-1 bg-transparent text-sm outline-none"
                 />
               </label>
               <div className="flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4">
                 <LanguageSwitcher />
+                {user && <NotificationsDropdown />}
                 {user ? (
                   <button onClick={() => { handlelogout(); setMobileOpen(false); }}
                     className="rounded border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                    {t("Logout")}
+                    {t("navbar.logout")}
                   </button>
                 ) : (
                   <>
                     <button onClick={() => { void handlelogin(); setMobileOpen(false); }}
                       className="rounded border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                      {t("Continue with google")}
+                      {t("navbar.continueWithGoogle")}
                     </button>
                     <Link href="/login" onClick={() => setMobileOpen(false)} className="px-2 py-2 text-sm text-gray-700">
-                      {t("Login")}
+                      {t("navbar.login")}
                     </Link>
                     <Link href="/register" onClick={() => setMobileOpen(false)} className="rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700">
-                      {t("Register")}
+                      {t("navbar.register")}
                     </Link>
                     <Link href="/adminlogin" onClick={() => setMobileOpen(false)} className="px-2 py-2 text-sm text-gray-600">
                       {t("navbar.admin")}

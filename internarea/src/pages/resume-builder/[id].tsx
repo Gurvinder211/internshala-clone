@@ -10,7 +10,7 @@ import { downloadResume } from "@/lib/downloadResume";
 
 const BLANK = {
   title: "My resume", template: "classic", themeColor: "#126b59", fontFamily: "Helvetica",
-  personal: { fullName: "", email: "", phone: "", location: "", careerObjective: "" },
+  personal: { fullName: "", email: "", phone: "", location: "", careerObjective: "", photoUrl: "" },
   education: [], experience: [], internships: [], projects: [],
   certifications: [], achievements: [], skills: [], languages: [],
   socialLinks: { linkedin: "", github: "", portfolio: "" }, references: [],
@@ -138,7 +138,8 @@ export default function ResumeBuilder() {
         toast.success("Draft saved");
         return data.resume._id;
       }
-      await api.patch(`/resume/${id}`, resume);
+      const { data } = await api.patch(`/resume/${id}`, resume);
+      setResume((current: any) => ({ ...current, ...data.resume }));
       toast.success("Draft saved");
       return String(id);
     } catch (error: any) {
@@ -248,6 +249,38 @@ export default function ResumeBuilder() {
                     onChange={(value) => updatePersonal("phone", value)} />
                   <Field label="Location" value={resume.personal.location} placeholder="City, country"
                     onChange={(value) => updatePersonal("location", value)} />
+                  <div className="sm:col-span-2 flex items-center gap-4 border border-dashed border-slate-300 p-3 rounded bg-slate-50">
+                    {resume.personal?.photoUrl ? (
+                      <img src={resume.personal.photoUrl} alt="Profile" className="h-16 w-16 rounded-full object-cover border-2 border-emerald-700" />
+                    ) : (
+                      <div className="h-16 w-16 rounded-full bg-slate-200 flex items-center justify-center text-xs text-slate-500 font-medium border">
+                        No photo
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <span className="block text-xs font-semibold text-slate-800">Profile Photo</span>
+                      <p className="text-xs text-slate-500 mb-2">Upload a professional photo for your resume (PNG/JPG under 2MB)</p>
+                      <div className="flex items-center gap-2">
+                        <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 transition shadow-sm">
+                          Choose file
+                          <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              if (file.size > 2 * 1024 * 1024) { toast.error("Photo must be under 2MB"); return; }
+                              const reader = new FileReader();
+                              reader.onload = () => updatePersonal("photoUrl", reader.result as string);
+                              reader.readAsDataURL(file);
+                            }
+                          }} />
+                        </label>
+                        {resume.personal?.photoUrl && (
+                          <button type="button" onClick={() => updatePersonal("photoUrl", "")} className="text-xs text-red-600 hover:underline font-medium">
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                   <div className="sm:col-span-2">
                     <Field label="Professional summary" multiline value={resume.personal.careerObjective}
                       placeholder="A concise introduction: your strengths, experience, and the work you want to do."
@@ -315,18 +348,27 @@ export default function ResumeBuilder() {
                     <span className="mb-1.5 block text-xs font-semibold text-slate-600">Template</span>
                     <select className={INPUT_CLASS} value={resume.template}
                       onChange={(event) => setResume({ ...resume, template: event.target.value })}>
-                      <option value="classic">Classic</option>
-                      <option value="modern">Modern</option>
-                      <option value="minimal">Minimal</option>
+                      <option value="classic">Classic (Standard ATS)</option>
+                      <option value="modern">Modern (Contemporary)</option>
+                      <option value="minimal">Minimal (Clean Monochrome)</option>
                     </select>
                   </label>
                   <label className="block">
+                    <span className="mb-1.5 block text-xs font-semibold text-slate-600">Font family</span>
+                    <select className={INPUT_CLASS} value={resume.fontFamily || "Helvetica"}
+                      onChange={(event) => setResume({ ...resume, fontFamily: event.target.value })}>
+                      <option value="Helvetica">Modern (Helvetica / Sans-serif)</option>
+                      <option value="Times-Roman">Classic (Times New Roman / Serif)</option>
+                      <option value="Courier">Technical (Courier / Monospace)</option>
+                    </select>
+                  </label>
+                  <label className="block sm:col-span-2">
                     <span className="mb-1.5 block text-xs font-semibold text-slate-600">Accent color</span>
-                    <span className="flex h-[42px] items-center gap-3 border border-slate-300 px-2.5">
+                    <span className="flex h-[42px] items-center gap-3 border border-slate-300 px-2.5 rounded bg-white">
                       <input aria-label="Accent color" type="color" value={resume.themeColor}
                         onChange={(event) => setResume({ ...resume, themeColor: event.target.value })}
                         className="h-7 w-9 cursor-pointer border-0 bg-transparent p-0" />
-                      <span className="text-sm uppercase text-slate-600">{resume.themeColor}</span>
+                      <span className="text-sm uppercase text-slate-600 font-mono">{resume.themeColor}</span>
                     </span>
                   </label>
                 </div>
@@ -354,6 +396,11 @@ export default function ResumeBuilder() {
                 </button>
               )}
             </div>
+            {resume.pdfOutdated && (
+              <p className="mt-3 text-xs text-amber-700">
+                You've edited this resume since the PDF was generated. Generate again (₹50) to update it.
+              </p>
+            )}
             {genState === "idle" ? (
               <button onClick={requestOtp} disabled={saving || loading}
                 className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 bg-emerald-800 px-4 text-sm font-semibold text-white hover:bg-emerald-900 disabled:opacity-50 sm:w-auto">
@@ -381,15 +428,28 @@ export default function ResumeBuilder() {
             </div>
             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500"><Eye size={15} /> Updates as you type</span>
           </div>
-          <article className="mx-auto min-h-[760px] max-w-[620px] overflow-hidden border border-slate-200 bg-white px-7 py-8 shadow-[0_12px_40px_rgba(15,23,42,0.08)] sm:px-10 sm:py-11">
-            <div className="border-b-2 pb-5" style={{ borderColor: resume.themeColor }}>
-              <h3 className="break-words text-3xl font-bold leading-tight text-slate-950">{resume.personal.fullName || "Your name"}</h3>
-              <p className="mt-2 break-words text-xs leading-5 text-slate-600">
-                {[resume.personal.email, resume.personal.phone, resume.personal.location].filter(Boolean).join("  ·  ") || "Email · Phone · Location"}
-              </p>
-              <p className="mt-1 break-all text-xs leading-5 text-slate-500">
-                {[resume.socialLinks.linkedin, resume.socialLinks.github, resume.socialLinks.portfolio].filter(Boolean).join("  ·  ")}
-              </p>
+          <article
+            className="mx-auto min-h-[760px] max-w-[620px] overflow-hidden border border-slate-200 bg-white px-7 py-8 shadow-[0_12px_40px_rgba(15,23,42,0.08)] sm:px-10 sm:py-11"
+            style={{ fontFamily: resume.fontFamily === 'Courier' ? 'Courier, monospace' : resume.fontFamily === 'Times-Roman' ? '"Times New Roman", Times, serif' : 'system-ui, -apple-system, sans-serif' }}
+          >
+            <div className="flex items-start justify-between gap-4 border-b-2 pb-5" style={{ borderColor: resume.themeColor }}>
+              <div className="min-w-0 flex-1">
+                <h3 className="break-words text-3xl font-bold leading-tight text-slate-950">{resume.personal.fullName || "Your name"}</h3>
+                <p className="mt-2 break-words text-xs leading-5 text-slate-600">
+                  {[resume.personal.email, resume.personal.phone, resume.personal.location].filter(Boolean).join("  ·  ") || "Email · Phone · Location"}
+                </p>
+                <p className="mt-1 break-all text-xs leading-5 text-slate-500">
+                  {[resume.socialLinks.linkedin, resume.socialLinks.github, resume.socialLinks.portfolio].filter(Boolean).join("  ·  ")}
+                </p>
+              </div>
+              {resume.personal?.photoUrl && (
+                <img
+                  src={resume.personal.photoUrl}
+                  alt={resume.personal.fullName || "Profile"}
+                  className="h-20 w-20 shrink-0 rounded-full border-2 object-cover shadow-sm"
+                  style={{ borderColor: resume.themeColor }}
+                />
+              )}
             </div>
             {resume.personal.careerObjective && <p className="mt-5 whitespace-pre-wrap text-xs leading-5 text-slate-700">{resume.personal.careerObjective}</p>}
 

@@ -7,6 +7,11 @@ const api = axios.create({
 });
 
 api.interceptors.request.use(async (config) => {
+  if (typeof window !== "undefined") {
+    const sessionId = localStorage.getItem("sessionId");
+    if (sessionId) config.headers["X-Session-Id"] = sessionId;
+  }
+
   // Prefer an active Firebase session; fall back to a stored local JWT.
   if (auth.currentUser) {
     config.headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;

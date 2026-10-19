@@ -14,5 +14,6 @@ const Applicationipschema = new Schema({
     default: "pending",
   },
   Application: Object,
+  resume: { type: Schema.Types.ObjectId, ref: "Resume", default: null },
 });
 export default model("Application", Applicationipschema);

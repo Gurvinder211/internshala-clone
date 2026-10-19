@@ -6,6 +6,7 @@ const sessionSchema = new Schema({
   deviceId: { type: String, required: true },
   status: { type: String, enum: ['pending', 'active', 'revoked', 'expired'], default: 'pending' },
   method: { type: String, enum: ['google', 'password'] },
+  otpDeliveryMode: { type: String, enum: ['email', 'console'] },
 
   ip: String, location: String,
   browser: String, browserVersion: String, os: String, deviceType: String, deviceModel: String,

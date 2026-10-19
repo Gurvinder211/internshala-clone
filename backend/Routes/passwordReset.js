@@ -1,118 +1,167 @@
 import { Router } from 'express';
-const router = Router();
+import rateLimit from 'express-rate-limit';
 import User from '../Model/User.js';
 import PasswordResetLog from '../Model/PasswordResetLog.js';
+import protect from '../middleware/auth.js';
 import { sendOtp, verifyOtp, OtpError } from '../Services/otpService.js';
 import { generateResetPassword, hashPassword } from '../Services/passwordService.js';
 import { getClientContext } from '../Services/clientContext.js';
 import { sendMail } from '../Services/mailer.js';
+import { sendSms } from '../Services/sms.js';
+import { normalizePhone } from '../Services/phone.js';
 
+const router = Router();
 const RESET_COOLDOWN_HOURS = 24;
+const resetLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
 
-// POST /api/password-reset/request
-// Body: { email }
-router.post('/request', async (req, res) => {
+const readInput = (body) => ({
+  method: body.method === 'sms' ? 'sms' : 'email',
+  identifier: body.identifier ?? body.email,
+});
+
+async function findUser(method, identifier) {
+  if (method === 'sms') {
+    const phone = normalizePhone(identifier);
+    return phone ? User.findOne({ phone }) : null;
+  }
+  const email = String(identifier || '').toLowerCase().trim();
+  return email ? User.findOne({ email }) : null;
+}
+
+const devFlag = (mode) => mode === 'console' ? { deliveryMode: 'console' } : {};
+
+router.post('/request', resetLimiter, async (req, res) => {
   try {
-    const { email } = req.body;
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
+    const { method, identifier } = readInput(req.body);
+    if (!identifier) {
+      return res.status(400).json({ error: method === 'sms' ? 'Mobile number is required' : 'Email is required' });
+    }
+    if (method === 'sms' && !normalizePhone(identifier)) {
+      return res.status(400).json({ error: 'Enter a valid mobile number, e.g. +91 98765 43210' });
     }
 
-    const normalizedEmail = email.toLowerCase().trim();
-    const user = await User.findOne({ email: normalizedEmail });
-
-    // Don't reveal whether the account exists — same response either way.
-    const genericOk = () =>
-      res.status(200).json({
-        success: true,
-        message: 'If an account exists for this email, a reset code has been sent.',
-      });
-
+    const genericOk = (extra = {}) => res.status(200).json({
+      success: true,
+      message: `If an account matches, a reset code has been sent${method === 'sms' ? ' by SMS' : ' to that email'}.`,
+      ...extra,
+    });
+    const user = await findUser(method, identifier);
     if (!user) return genericOk();
 
-    if (user.lastPasswordResetAt) {
-      const hoursSince = (Date.now() - user.lastPasswordResetAt.getTime()) / (1000 * 60 * 60);
-      if (hoursSince < RESET_COOLDOWN_HOURS) {
-        return res.status(429).json({
-          error: 'You can use this option only once per day.',
-          code: 'DAILY_LIMIT',
-        });
-      }
-    }
-
-    await sendOtp({ userId: user._id, purpose: 'PASSWORD_RESET', sentTo: user.email });
-
-    const ctx = getClientContext(req);
-    await PasswordResetLog.create({
+    const since = new Date(Date.now() - RESET_COOLDOWN_HOURS * 60 * 60 * 1000);
+    const recentRequest = await PasswordResetLog.findOne({
       userId: user._id,
-      method: 'email',
-      verified: false,
-      ...ctx,
-    });
-
-    return genericOk();
-  } catch (err) {
-    if (err instanceof OtpError) {
-      // Cooldown/daily-cap from the OTP service itself (separate from the
-      // 24h reset-request limit above — this one guards the code, not the reset).
-      return res.status(429).json({ error: err.message, code: err.code });
+      deliveryFailed: { $ne: true },
+      createdAt: { $gte: since },
+    }).sort({ createdAt: -1 });
+    if (recentRequest) {
+      return res.status(429).json({ error: 'You can use this option only once per day.', code: 'DAILY_LIMIT' });
     }
+
+    const requestAt = new Date();
+    const reservedUser = await User.findOneAndUpdate({
+      _id: user._id,
+      $and: [
+        { $or: [{ lastPasswordResetRequestedAt: null }, { lastPasswordResetRequestedAt: { $lt: since } }] },
+        { $or: [{ lastPasswordResetAt: null }, { lastPasswordResetAt: { $lt: since } }] },
+      ],
+    }, { $set: { lastPasswordResetRequestedAt: requestAt } }, { new: true });
+    if (!reservedUser) {
+      return res.status(429).json({ error: 'You can use this option only once per day.', code: 'DAILY_LIMIT' });
+    }
+
+    try {
+      const { deliveryMode } = await sendOtp({
+        userId: user._id,
+        purpose: 'PASSWORD_RESET',
+        sentTo: method === 'sms' ? user.phone : user.email,
+        channel: method,
+      });
+      await PasswordResetLog.create({ userId: user._id, method, verified: false, ...getClientContext(req) });
+      return genericOk(devFlag(deliveryMode));
+    } catch (error) {
+      await User.updateOne({ _id: user._id, lastPasswordResetRequestedAt: requestAt }, { $set: { lastPasswordResetRequestedAt: null } });
+      throw error;
+    }
+  } catch (err) {
+    if (err instanceof OtpError) return res.status(429).json({ error: err.message, code: err.code });
     console.error('password-reset request failed:', err);
     res.status(500).json({ error: 'Could not process request' });
   }
 });
 
-// POST /api/password-reset/verify
-// Body: { email, code }
-router.post('/verify', async (req, res) => {
+router.post('/verify', resetLimiter, async (req, res) => {
   try {
-    const { email, code } = req.body;
-    if (!email || !code) {
-      return res.status(400).json({ error: 'Email and code are required' });
-    }
+    const { method, identifier } = readInput(req.body);
+    const { code } = req.body;
+    if (!identifier || !code) return res.status(400).json({ error: 'Details and code are required' });
 
-    const normalizedEmail = email.toLowerCase().trim();
-    const user = await User.findOne({ email: normalizedEmail });
-    if (!user) {
-      // Generic — same shape as a wrong code, don't leak account existence.
-      return res.status(400).json({ error: 'Invalid code' });
-    }
-
-    await verifyOtp({ userId: user._id, purpose: 'PASSWORD_RESET', code });
+    const user = await findUser(method, identifier);
+    if (!user) return res.status(400).json({ error: 'Invalid code' });
+    await verifyOtp({
+      userId: user._id,
+      purpose: 'PASSWORD_RESET',
+      code,
+      channel: method,
+      sentTo: method === 'sms' ? user.phone : user.email,
+    });
 
     const newPassword = generateResetPassword();
+    let delivery;
+    try {
+      delivery = method === 'sms'
+        ? await sendSms({ to: user.phone, text: `InternArea: your temporary password is ${newPassword}. You'll be asked to change it after you sign in.` })
+        : await sendMail({
+            to: user.email,
+            subject: 'Your new password',
+            text: `Your password has been reset. Your new temporary password is:\n\n${newPassword}\n\nYou'll be asked to change it right after you log in. If you didn't request this, contact support immediately.`,
+            html: `<p>Your password has been reset. Your new temporary password is:</p><h2 style="letter-spacing:2px">${newPassword}</h2><p>You'll be asked to change it right after you log in. If you didn't request this, contact support immediately.</p>`,
+          });
+    } catch (deliveryError) {
+      console.error('password delivery failed:', deliveryError);
+      await PasswordResetLog.findOneAndUpdate(
+        { userId: user._id, method, verified: false },
+        { $set: { deliveryFailed: true } },
+        { sort: { createdAt: -1 } }
+      );
+      await User.updateOne({ _id: user._id }, { $set: { lastPasswordResetRequestedAt: null } });
+      return res.status(502).json({ error: "We couldn't deliver your new password. Nothing was changed. Please request a new code." });
+    }
+
     user.passwordHash = await hashPassword(newPassword);
     user.mustChangePassword = true;
     user.lastPasswordResetAt = new Date();
-    user.authProvider = user.authProvider === 'google' ? 'local' : user.authProvider;
-    // ^ if a Google-only user resets via email, they now also have a local
-    // password — flip them to a state where email+password login works too.
-    // Drop this line if you want reset to be local-accounts-only.
+    if (user.authProvider === 'google') user.authProvider = 'local';
     await user.save();
 
-    await PasswordResetLog.updateOne(
+    await PasswordResetLog.findOneAndUpdate(
       { userId: user._id, verified: false },
       { $set: { verified: true } },
       { sort: { createdAt: -1 } }
     );
 
-    await sendMail({
-      to: user.email,
-      subject: 'Your new password',
-      text: `Your password has been reset. Your new temporary password is:\n\n${newPassword}\n\nYou'll be asked to change it right after you log in. If you didn't request this, contact support immediately.`,
-      html: `<p>Your password has been reset. Your new temporary password is:</p><h2 style="letter-spacing:2px">${newPassword}</h2><p>You'll be asked to change it right after you log in. If you didn't request this, contact support immediately.</p>`,
-    });
-
     res.status(200).json({
       success: true,
-      message: 'A new password has been sent to your email.',
+      message: method === 'sms' ? 'A new password has been sent to your mobile number by SMS.' : 'A new password has been sent to your email.',
+      ...devFlag(delivery.deliveryMode),
     });
   } catch (err) {
-    if (err instanceof OtpError) {
-      return res.status(400).json({ error: err.message, code: err.code });
-    }
+    if (err instanceof OtpError) return res.status(400).json({ error: err.message, code: err.code });
     console.error('password-reset verify failed:', err);
     res.status(500).json({ error: 'Could not reset password' });
+  }
+});
+
+router.get('/history', protect, async (req, res) => {
+  try {
+    const logs = await PasswordResetLog.find({ userId: req.user._id })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .select('-__v');
+    res.status(200).json({ history: logs });
+  } catch (err) {
+    console.error('password-reset history failed:', err);
+    res.status(500).json({ error: 'Could not load password reset history' });
   }
 });
 

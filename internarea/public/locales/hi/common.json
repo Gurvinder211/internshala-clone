@@ -1,14 +1,62 @@
 {
   "navbar": {
     "internships": "इंटर्नशिप",
-    "jobs": "नौकरियाँ",
+    "jobs": "नौकरियां",
     "searchPlaceholder": "अवसर खोजें...",
     "logout": "लॉग आउट",
-    "continueWithGoogle": "Google से जारी रखें",
-    "admin": "एडमिन"
+    "continueWithGoogle": "Google के साथ जारी रखें",
+    "admin": "एडमिन",
+    "login": "लॉग इन",
+    "register": "रजिस्टर करें",
+    "plans": "सब्सक्रिप्शन प्लान",
+    "resumeBuilder": "रिज्यूमे बिल्डर",
+    "publicSpace": "पब्लिक स्पेस",
+    "friends": "दोस्त",
+    "profile": "प्रोफ़ाइल"
+  },
+  "common": {
+    "save": "सहेजें",
+    "cancel": "रद्द करें",
+    "loading": "लोड हो रहा है...",
+    "submit": "जमा करें",
+    "verify": "सत्यापित करें",
+    "delete": "हटाएं",
+    "edit": "संपादित करें",
+    "download": "डाउनलोड",
+    "success": "सफल",
+    "error": "त्रुटि"
+  },
+  "auth": {
+    "email": "ईमेल पता",
+    "password": "पासवर्ड",
+    "forgotPassword": "पासवर्ड भूल गए?",
+    "resetPassword": "पासवर्ड रीसेट करें",
+    "newPassword": "नया पासवर्ड",
+    "currentPassword": "वर्तमान पासवर्ड"
+  },
+  "subscription": {
+    "managePlan": "प्लान प्रबंधित करें",
+    "currentPlan": "आपका वर्तमान प्लान",
+    "monthlyQuota": "मासिक आवेदन कोटा",
+    "unlimited": "असीमित आवेदन"
+  },
+  "resume": {
+    "resumeStudio": "रिज्यूमे स्टूडियो",
+    "saveDraft": "ड्राफ्ट सहेजें",
+    "generatePdf": "PDF बनाएं",
+    "atsFriendly": "ATS-अनुकूल टेम्प्लेट"
+  },
+  "publicSpace": {
+    "communityFeed": "कम्युनिटी फीड",
+    "writePost": "एक विचार या उपलब्धि साझा करें...",
+    "post": "पोस्ट करें",
+    "like": "पसंद करें",
+    "comment": "टिप्पणी",
+    "share": "शेयर करें",
+    "save": "सहेजें"
   },
   "toast": {
-    "loginSuccess": "सफलतापूर्वक लॉग इन हुआ",
-    "loginFailed": "लॉगिन विफल रहा"
+    "loginSuccess": "सफलतापूर्वक लॉग इन किया गया",
+    "loginFailed": "लॉग इन विफल रहा"
   }
 }

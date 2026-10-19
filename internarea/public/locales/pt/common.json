@@ -2,13 +2,61 @@
   "navbar": {
     "internships": "Estágios",
     "jobs": "Vagas",
-    "searchPlaceholder": "Buscar oportunidades...",
+    "searchPlaceholder": "Pesquisar oportunidades...",
     "logout": "Sair",
     "continueWithGoogle": "Continuar com o Google",
-    "admin": "Administrador"
+    "admin": "Admin",
+    "login": "Entrar",
+    "register": "Cadastre-se",
+    "plans": "Planos",
+    "resumeBuilder": "Gerador de Currículo",
+    "publicSpace": "Espaço Público",
+    "friends": "Amigos",
+    "profile": "Perfil"
+  },
+  "common": {
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "loading": "Carregando...",
+    "submit": "Enviar",
+    "verify": "Verificar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "download": "Baixar",
+    "success": "Sucesso",
+    "error": "Erro"
+  },
+  "auth": {
+    "email": "E-mail",
+    "password": "Senha",
+    "forgotPassword": "Esqueceu a senha?",
+    "resetPassword": "Redefinir senha",
+    "newPassword": "Nova senha",
+    "currentPassword": "Senha atual"
+  },
+  "subscription": {
+    "managePlan": "Gerenciar plano",
+    "currentPlan": "Seu plano atual",
+    "monthlyQuota": "Cota mensal de candidaturas",
+    "unlimited": "Candidaturas ilimitadas"
+  },
+  "resume": {
+    "resumeStudio": "Estúdio de Currículo",
+    "saveDraft": "Salvar rascunho",
+    "generatePdf": "Gerar PDF",
+    "atsFriendly": "Modelos compatíveis com ATS"
+  },
+  "publicSpace": {
+    "communityFeed": "Feed da comunidade",
+    "writePost": "Compartilhe uma conquista ou pensamento...",
+    "post": "Publicar",
+    "like": "Curtir",
+    "comment": "Comentar",
+    "share": "Compartilhar",
+    "save": "Salvar"
   },
   "toast": {
-    "loginSuccess": "login efetuado com sucesso",
-    "loginFailed": "falha no login"
+    "loginSuccess": "Login realizado com sucesso",
+    "loginFailed": "Falha no login"
   }
 }

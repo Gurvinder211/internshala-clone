@@ -23,12 +23,21 @@ async function comparePassword(password, hash) {
   if (!hash) return false; // e.g. google-only account with no local password
   return compare(password, hash);
 }
+const RESET_PASSWORD_LENGTH = 12;
+
 function generateResetPassword() {
   let pwd = '';
-  for (let i = 0; i < RESET_PASSWORD_LENGTH; i++) {
+  // Guarantee both uppercase and lowercase English letters
+  const UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const LOWERCASE = 'abcdefghijklmnopqrstuvwxyz';
+  pwd += UPPERCASE[randomInt(0, UPPERCASE.length)];
+  pwd += LOWERCASE[randomInt(0, LOWERCASE.length)];
+
+  for (let i = 2; i < RESET_PASSWORD_LENGTH; i++) {
     pwd += LETTERS[randomInt(0, LETTERS.length)];
   }
-  return pwd;
+  // Shuffle characters to avoid predictable positions
+  return pwd.split('').sort(() => randomInt(-1, 2)).join('');
 }
 
 

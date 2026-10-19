@@ -39,7 +39,7 @@ const i18nConfig = {
 
 function AuthListener() {
   const dispatch = useDispatch();
-  const [challenge, setChallenge] = useState<{ maskedEmail: string } | null>(null);
+  const [challenge, setChallenge] = useState<{ maskedEmail: string; deliveryMode?: "email" | "console" } | null>(null);
 
   const abandonLogin = async (message?: string) => {
     clearLocalSession();
@@ -73,11 +73,19 @@ function AuthListener() {
       try {
         const result = await startSession();
         if (result.status === "active") dispatch(login(result.user));
-        else if (result.status === "otp_required") setChallenge({ maskedEmail: result.maskedEmail });
+        else if (result.status === "otp_required") setChallenge({ maskedEmail: result.maskedEmail, deliveryMode: result.deliveryMode });
         else await abandonLogin(result.message);
       } catch (err) {
         if (axios.isAxiosError(err) && err.response?.status === 401) {
-          if (!hasFirebaseUser) localStorage.removeItem("authToken");
+          if (hasFirebaseUser) {
+            clearLocalSession();
+            await signOut(auth).catch(() => {});
+            toast.error("Google sign-in succeeded, but the backend rejected the Firebase token. Check that backend/serviceAccountKey.json belongs to the same Firebase project as the frontend.");
+          } else {
+            localStorage.removeItem("authToken");
+          }
+        } else if (axios.isAxiosError(err) && !err.response && hasFirebaseUser) {
+          toast.error("Google sign-in succeeded, but the backend could not be reached. Make sure the backend is running at http://localhost:5000.");
         } else {
           toast.error(
             (axios.isAxiosError(err) && err.response?.data?.error) || "Could not sign you in. Please try again."
@@ -93,6 +101,7 @@ function AuthListener() {
   return challenge ? (
     <LoginOtpModal
       maskedEmail={challenge.maskedEmail}
+      deliveryMode={challenge.deliveryMode}
       onVerified={(user) => { dispatch(login(user)); setChallenge(null); }}
       onCancel={(message) => void abandonLogin(message)}
     />

@@ -5,10 +5,58 @@
     "searchPlaceholder": "Rechercher des opportunités...",
     "logout": "Déconnexion",
     "continueWithGoogle": "Continuer avec Google",
-    "admin": "Administrateur"
+    "admin": "Administrateur",
+    "login": "Connexion",
+    "register": "S'inscrire",
+    "plans": "Forfaits",
+    "resumeBuilder": "Créateur de CV",
+    "publicSpace": "Espace public",
+    "friends": "Amis",
+    "profile": "Profil"
+  },
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "loading": "Chargement...",
+    "submit": "Soumettre",
+    "verify": "Vérifier",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "download": "Télécharger",
+    "success": "Succès",
+    "error": "Erreur"
+  },
+  "auth": {
+    "email": "Adresse e-mail",
+    "password": "Mot de passe",
+    "forgotPassword": "Mot de passe oublié ?",
+    "resetPassword": "Réinitialiser le mot de passe",
+    "newPassword": "Nouveau mot de passe",
+    "currentPassword": "Mot de passe actuel"
+  },
+  "subscription": {
+    "managePlan": "Gérer le forfait",
+    "currentPlan": "Votre forfait actuel",
+    "monthlyQuota": "Quota mensuel de candidatures",
+    "unlimited": "Candidatures illimitées"
+  },
+  "resume": {
+    "resumeStudio": "Studio de CV",
+    "saveDraft": "Enregistrer le brouillon",
+    "generatePdf": "Générer le PDF",
+    "atsFriendly": "Modèles compatibles ATS"
+  },
+  "publicSpace": {
+    "communityFeed": "Fil communautaire",
+    "writePost": "Partagez une étape ou une idée...",
+    "post": "Publier",
+    "like": "J'aime",
+    "comment": "Commenter",
+    "share": "Partager",
+    "save": "Enregistrer"
   },
   "toast": {
-    "loginSuccess": "connexion réussie",
-    "loginFailed": "échec de la connexion"
+    "loginSuccess": "Connexion réussie",
+    "loginFailed": "Échec de la connexion"
   }
 }

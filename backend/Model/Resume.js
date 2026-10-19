@@ -27,6 +27,7 @@ const resumeSchema = new Schema({
   pdfUrl: { type: String, default: null },
   pdfGeneratedAt: { type: Date, default: null },
   paid: { type: Boolean, default: false }, // has ANY generation ever been paid for
+  pdfOutdated: { type: Boolean, default: false },
 }, { timestamps: true });
 
 resumeSchema.index({ userId: 1, createdAt: -1 });

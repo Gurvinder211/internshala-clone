@@ -56,7 +56,10 @@ export async function startOrResumeSession({ user, ctx, method, existingSessionI
     if (existing?.status === 'revoked') return { status: 'revoked' };
     if (existing && existing.expiresAt > now) {
       if (existing.status === 'active') return { status: 'active', session: existing };
-      if (existing.status === 'pending') return { status: 'otp_required', session: existing };
+      if (existing.status === 'pending') {
+        const deliveryMode = existing.otpDeliveryMode || (process.env.SMTP_HOST ? 'email' : 'console');
+        return { status: 'otp_required', session: existing, deliveryMode };
+      }
     }
   }
 
@@ -97,8 +100,11 @@ export async function startOrResumeSession({ user, ctx, method, existingSessionI
     throw err;
   }
 
+  let deliveryMode;
   try {
-    await sendOtp({ userId: user._id, purpose: 'LOGIN_VERIFY', sentTo: user.email });
+    ({ deliveryMode } = await sendOtp({ userId: user._id, purpose: 'LOGIN_VERIFY', sentTo: user.email }));
+    await Session.updateOne({ _id: session._id }, { $set: { otpDeliveryMode: deliveryMode } });
+    session.otpDeliveryMode = deliveryMode;
   } catch (err) {
     await Session.deleteOne({ _id: session._id });
     throw err;
@@ -107,7 +113,7 @@ export async function startOrResumeSession({ user, ctx, method, existingSessionI
   await logLoginEvent(user, ctx, {
     status: 'OTP_SENT', sessionId: session.sessionId, method, otpRequired: true, reason: decision.reason, ...decision.flags,
   });
-  return { status: 'otp_required', session };
+  return { status: 'otp_required', session, deliveryMode };
 }
 
 export async function activateSession(session, user, ctx) {
