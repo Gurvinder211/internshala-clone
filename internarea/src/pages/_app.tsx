@@ -105,23 +105,36 @@ function AuthListener() {
       }
     };
 
-    // Process the Google redirect result BEFORE setting up onAuthStateChanged.
-    // Without this, auth.currentUser is null when startSession() fires its
-    // credentialHeader() call, so the backend receives no Firebase ID token.
-    getRedirectResult(auth).catch((err) => {
-      console.error("getRedirectResult error:", err);
-      const code = err?.code ?? "";
-      if (code !== "auth/popup-closed-by-user") {
-        toast.error(
-          code === "auth/unauthorized-domain"
-            ? "Add this site to Firebase Authentication's authorized domains."
-            : `Google sign-in failed after redirect (${code}). Check your Firebase configuration.`
-        );
-      }
-      sessionStorage.removeItem("redirectAfterLogin");
-    });
+    // ─── KEY FIX ──────────────────────────────────────────────────────────────
+    // With signInWithRedirect the page fully reloads. Firebase needs
+    // getRedirectResult() to finalise the credential before auth.currentUser is
+    // populated. We MUST await it before wiring up onAuthStateChanged so the
+    // listener never fires with null while the redirect is still being processed.
+    // ──────────────────────────────────────────────────────────────────────────
+    let unsubscribe: (() => void) | null = null;
 
-    return auth.onAuthStateChanged((u) => void restore(!!u));
+    getRedirectResult(auth)
+      .catch((err) => {
+        console.error("getRedirectResult error:", err);
+        const code: string = err?.code ?? "";
+        if (code && code !== "auth/popup-closed-by-user") {
+          toast.error(
+            code === "auth/unauthorized-domain"
+              ? "Add this site to Firebase Authentication's authorized domains."
+              : `Google sign-in failed after redirect (${code}). Check your Firebase configuration.`
+          );
+        }
+        sessionStorage.removeItem("redirectAfterLogin");
+      })
+      .finally(() => {
+        // Subscribe AFTER the redirect result (if any) has been processed so
+        // onAuthStateChanged sees the final, correct user on its very first call.
+        unsubscribe = auth.onAuthStateChanged((u) => void restore(!!u));
+      });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [dispatch, router]);
 
   return challenge ? (
