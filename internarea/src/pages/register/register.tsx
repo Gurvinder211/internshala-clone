@@ -4,7 +4,7 @@ import { useDispatch } from "react-redux";
 import { ArrowRight, Check, Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react";
 import axios from "axios";
 import { login } from "@/Feature/Userslice";
-import { signInWithRedirect } from "firebase/auth";
+import { signInWithPopup, signInWithRedirect } from "firebase/auth";
 import { auth, isFirebaseConfigured, provider } from "@/firebase/firebase";
 import { startSession } from "@/lib/session";
 import LoginOtpModal from "@/Components/LoginOtpModal";
@@ -29,17 +29,31 @@ export default function Register() {
     setIsGoogleSubmitting(true);
     try {
       sessionStorage.setItem("redirectAfterLogin", "true");
-      await signInWithRedirect(auth, provider);
-      // Page will navigate away; the result is handled by onAuthStateChanged in _app.tsx
+      await signInWithPopup(auth, provider);
+      // The auth listener in _app.tsx creates the backend session.
     } catch (err: unknown) {
+      let signInError = err;
+      let code = typeof err === "object" && err && "code" in err ? String(err.code) : "";
+      if (code === "auth/popup-blocked") {
+        try {
+          await signInWithRedirect(auth, provider);
+          return;
+        } catch (redirectError: unknown) {
+          signInError = redirectError;
+          code = typeof redirectError === "object" && redirectError && "code" in redirectError
+            ? String(redirectError.code)
+            : "";
+        }
+      }
+
       sessionStorage.removeItem("redirectAfterLogin");
-      const code = typeof err === "object" && err && "code" in err ? String(err.code) : "";
       const messages: Record<string, string> = {
         "auth/unauthorized-domain": "This site is not authorized for Firebase sign-in. Add its hostname under Firebase Authentication > Settings > Authorized domains.",
         "auth/operation-not-allowed": "Google sign-in is disabled. Enable Google under Firebase Authentication > Sign-in method.",
         "auth/invalid-api-key": "The Firebase API key is invalid or belongs to a different project.",
         "auth/popup-closed-by-user": "Google sign-up was canceled.",
       };
+      console.error("Google sign-up failed:", signInError);
       setError(messages[code] || `Google sign-up failed${code ? ` (${code})` : ""}. Check your Firebase Authentication settings and try again.`);
       setIsGoogleSubmitting(false);
     }
