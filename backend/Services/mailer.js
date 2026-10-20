@@ -88,6 +88,35 @@ async function sendWithResend({ to, subject, html, text }) {
 }
 
 async function sendMail({ to, subject, html, text }) {
+  const host = process.env.SMTP_HOST;
+  if (host) {
+    const port = Number(process.env.SMTP_PORT) || 587;
+    const smtpPassword = process.env.SMTP_PASS?.replace(/\s/g, '');
+    const auth = process.env.SMTP_USER && smtpPassword
+      ? { user: process.env.SMTP_USER, pass: smtpPassword }
+      : undefined;
+    const transporter = createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth,
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 30_000,
+    });
+    const result = await transporter.sendMail({
+      from: process.env.SMTP_FROM || `"InternArea" <${process.env.SMTP_USER}>`,
+      to,
+      subject,
+      html,
+      text,
+    });
+    if (!result.accepted?.length) {
+      throw new Error('SMTP server did not accept the message');
+    }
+    return { deliveryMode: 'email' };
+  }
+
   if (process.env.SENDGRID_API_KEY) {
     return sendWithSendGrid({ to, subject, html, text });
   }
@@ -96,42 +125,13 @@ async function sendMail({ to, subject, html, text }) {
     return sendWithResend({ to, subject, html, text });
   }
 
-  const host = process.env.SMTP_HOST;
-  if (!host) {
-    if (process.env.NODE_ENV === 'production') {
-      const error = new Error('SENDGRID_API_KEY, RESEND_API_KEY, or SMTP_HOST is required to send email in production');
-      error.code = 'EMAIL_NOT_CONFIGURED';
-      throw error;
-    }
-    console.log(`\n[DEV MAIL ONLY - NOT SENT] to: ${to}\nsubject: ${subject}\n${text}\n`);
-    return { deliveryMode: 'console' };
+  if (process.env.NODE_ENV === 'production') {
+    const error = new Error('SMTP_HOST, SENDGRID_API_KEY, or RESEND_API_KEY is required to send email in production');
+    error.code = 'EMAIL_NOT_CONFIGURED';
+    throw error;
   }
-
-  const port = Number(process.env.SMTP_PORT) || 587;
-  const smtpPassword = process.env.SMTP_PASS?.replace(/\s/g, '');
-  const auth = process.env.SMTP_USER && smtpPassword
-    ? { user: process.env.SMTP_USER, pass: smtpPassword }
-    : undefined;
-  const transporter = createTransport({
-    host,
-    port,
-    secure: port === 465,
-    auth,
-    connectionTimeout: 10_000,
-    greetingTimeout: 10_000,
-    socketTimeout: 30_000,
-  });
-  const result = await transporter.sendMail({
-    from: process.env.SMTP_FROM || `"InternArea" <${process.env.SMTP_USER}>`,
-    to,
-    subject,
-    html,
-    text,
-  });
-  if (!result.accepted?.length) {
-    throw new Error('SMTP server did not accept the message');
-  }
-  return { deliveryMode: 'email' };
+  console.log(`\n[DEV MAIL ONLY - NOT SENT] to: ${to}\nsubject: ${subject}\n${text}\n`);
+  return { deliveryMode: 'console' };
 }
 
 export { sendMail };

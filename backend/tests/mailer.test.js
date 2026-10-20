@@ -9,6 +9,7 @@ const originalEnv = {
   EMAIL_FROM: process.env.EMAIL_FROM,
   SMTP_FROM: process.env.SMTP_FROM,
   SMTP_HOST: process.env.SMTP_HOST,
+  SMTP_PORT: process.env.SMTP_PORT,
 };
 
 test('sendMail uses Resend over HTTPS when configured', async () => {
@@ -82,6 +83,37 @@ test('sendMail uses SendGrid with a verified single sender over HTTPS', async ()
         { type: 'text/html', value: '<p>Code</p>' },
       ],
     });
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const [key, value] of Object.entries(originalEnv)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});
+
+test('configured SMTP takes precedence over email API keys', async () => {
+  process.env.SMTP_HOST = '127.0.0.1';
+  process.env.SMTP_PORT = '1';
+  process.env.SENDGRID_API_KEY = 'test-sendgrid-key';
+  process.env.RESEND_API_KEY = 'test-resend-key';
+
+  let apiCalled = false;
+  globalThis.fetch = async () => {
+    apiCalled = true;
+    return new Response(null, { status: 202 });
+  };
+
+  try {
+    await assert.rejects(
+      sendMail({
+        to: 'user@example.com',
+        subject: 'Verify sign-in',
+        html: '<p>Code</p>',
+        text: 'Code',
+      })
+    );
+    assert.equal(apiCalled, false);
   } finally {
     globalThis.fetch = originalFetch;
     for (const [key, value] of Object.entries(originalEnv)) {
