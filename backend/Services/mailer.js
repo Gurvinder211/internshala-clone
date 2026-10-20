@@ -15,7 +15,15 @@ async function sendMail({ to, subject, html, text }) {
   const auth = process.env.SMTP_USER && smtpPassword
     ? { user: process.env.SMTP_USER, pass: smtpPassword }
     : undefined;
-  const transporter = createTransport({ host, port, secure: port === 465, auth });
+  const transporter = createTransport({
+    host,
+    port,
+    secure: port === 465,
+    auth,
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 30_000,
+  });
   const result = await transporter.sendMail({
     from: process.env.SMTP_FROM || `"InternArea" <${process.env.SMTP_USER}>`,
     to,

@@ -28,10 +28,14 @@ export default function Login() {
     setError("");
     setIsSubmitting(true);
     try {
-      const { data } = await axios.post("https://internshala-backend-69sb.onrender.com/api/auth/login", {
-        email: form.email.trim().toLowerCase(),
-        password: form.password,
-      });
+      const { data } = await axios.post(
+        "https://internshala-backend-69sb.onrender.com/api/auth/login",
+        {
+          email: form.email.trim().toLowerCase(),
+          password: form.password,
+        },
+        { timeout: 60_000 }
+      );
       localStorage.setItem("authToken", data.token);
 
       const result = await startSession();
@@ -44,7 +48,11 @@ export default function Login() {
     } catch (err: unknown) {
       localStorage.removeItem("authToken");
       if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.error || "Login failed. Please check your details.");
+        setError(
+          err.code === "ECONNABORTED" || err.code === "ETIMEDOUT"
+            ? "Sign-in timed out while waiting for the backend. Please try again."
+            : err.response?.data?.error || "Login failed. Please check your details."
+        );
       } else {
         setError("Login failed. Please try again.");
       }

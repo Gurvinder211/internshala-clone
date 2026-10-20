@@ -59,7 +59,10 @@ async function credentialHeader(): Promise<Record<string, string>> {
 }
 
 async function sessionCall(path: string, data?: unknown) {
-  return axios.post(`${API_BASE}${path}`, data ?? {}, { headers: await credentialHeader() });
+  return axios.post(`${API_BASE}${path}`, data ?? {}, {
+    headers: await credentialHeader(),
+    timeout: 60_000,
+  });
 }
 
 let inflight: Promise<SessionResult> | null = null;
