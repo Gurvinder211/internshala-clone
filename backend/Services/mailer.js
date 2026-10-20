@@ -1,11 +1,51 @@
 import { createTransport } from 'nodemailer';
 
+async function sendWithResend({ to, subject, html, text }) {
+  const from = process.env.EMAIL_FROM || process.env.SMTP_FROM;
+  if (!from) {
+    const error = new Error('EMAIL_FROM is required when RESEND_API_KEY is configured');
+    error.code = 'EMAIL_FROM_NOT_CONFIGURED';
+    throw error;
+  }
+
+  let response;
+  try {
+    response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ from, to: [to], subject, html, text }),
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch (cause) {
+    const error = new Error('Could not reach the email API', { cause });
+    error.code = 'EMAIL_API_UNAVAILABLE';
+    throw error;
+  }
+
+  if (!response.ok) {
+    const details = await response.text();
+    console.error(`Email API rejected the message (${response.status}): ${details}`);
+    const error = new Error('Email API rejected the message');
+    error.code = 'EMAIL_API_REJECTED';
+    throw error;
+  }
+
+  return { deliveryMode: 'email' };
+}
+
 async function sendMail({ to, subject, html, text }) {
+  if (process.env.RESEND_API_KEY) {
+    return sendWithResend({ to, subject, html, text });
+  }
+
   const host = process.env.SMTP_HOST;
   if (!host) {
     if (process.env.NODE_ENV === 'production') {
-      const error = new Error('SMTP_HOST is required to send email in production');
-      error.code = 'SMTP_NOT_CONFIGURED';
+      const error = new Error('RESEND_API_KEY or SMTP_HOST is required to send email in production');
+      error.code = 'EMAIL_NOT_CONFIGURED';
       throw error;
     }
     console.log(`\n[DEV MAIL ONLY - NOT SENT] to: ${to}\nsubject: ${subject}\n${text}\n`);

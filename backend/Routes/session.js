@@ -48,15 +48,33 @@ router.post('/session', authenticate, async (req, res) => {
         code: 'SMTP_AUTH_FAILED',
       });
     }
-    if (err.code === 'SMTP_NOT_CONFIGURED') {
+    if (err.code === 'EMAIL_NOT_CONFIGURED') {
       return res.status(503).json({
-        error: 'Email verification is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, and SMTP_FROM in the Render service environment.',
-        code: 'SMTP_NOT_CONFIGURED',
+        error: 'Email verification is not configured. Set RESEND_API_KEY and EMAIL_FROM in the Render service environment.',
+        code: 'EMAIL_NOT_CONFIGURED',
+      });
+    }
+    if (err.code === 'EMAIL_FROM_NOT_CONFIGURED') {
+      return res.status(503).json({
+        error: 'Set EMAIL_FROM to a verified sender address for the configured email provider.',
+        code: 'EMAIL_FROM_NOT_CONFIGURED',
+      });
+    }
+    if (err.code === 'EMAIL_API_UNAVAILABLE') {
+      return res.status(503).json({
+        error: 'The email API could not be reached. Check Render outbound HTTPS connectivity and the provider status.',
+        code: 'EMAIL_API_UNAVAILABLE',
+      });
+    }
+    if (err.code === 'EMAIL_API_REJECTED') {
+      return res.status(503).json({
+        error: 'The email provider rejected the message. Check RESEND_API_KEY and confirm EMAIL_FROM is verified.',
+        code: 'EMAIL_API_REJECTED',
       });
     }
     if (['ECONNECTION', 'ECONNREFUSED', 'ETIMEDOUT', 'ESOCKET'].includes(err.code)) {
       return res.status(503).json({
-        error: 'The email service is unavailable. Check the SMTP host, port, and connectivity in the Render service environment.',
+        error: 'The SMTP email service is unavailable. Configure RESEND_API_KEY and EMAIL_FROM, or check the SMTP host, port, and connectivity.',
         code: 'SMTP_UNAVAILABLE',
       });
     }
