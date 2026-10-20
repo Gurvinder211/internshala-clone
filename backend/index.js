@@ -11,15 +11,37 @@ import path from 'path';
 
 // Enable JSON loading in ES Modules
 const require = createRequire(import.meta.url);
-const serviceAccount = require('./serviceAccountKey.json');
+
+// In production (Render), provide the service account JSON as the
+// FIREBASE_SERVICE_ACCOUNT environment variable (stringified JSON).
+// In development the local serviceAccountKey.json file is used instead.
+let serviceAccount;
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} else {
+  serviceAccount = require('./serviceAccountKey.json');
+}
 
 initializeApp({
   credential: cert(serviceAccount)
 });
 
-const port = 5000;
+const port = process.env.PORT || 5000;
 
-app.use(cors());
+const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:3000")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      // Requests without an Origin header are server-to-server or local tools.
+      if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error("Origin is not allowed by CORS"));
+    },
+  })
+);
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
@@ -28,11 +50,6 @@ app.get("/", (req, res) => {
 });
 app.use("/api", router);
 connect();
-app.use((req, res, next) => {
-  req.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Origin", "*");
-  next();
-});
 app.use('/uploads/posts', express.static(path.join(process.cwd(), 'storage', 'posts')));
 app.listen(port, () => {
   console.log(`Server is running on the port ${port}`);
