@@ -57,13 +57,22 @@ export async function startOrResumeSession({ user, ctx, method, existingSessionI
     if (existing && existing.expiresAt > now) {
       if (existing.status === 'active') return { status: 'active', session: existing };
       if (existing.status === 'pending') {
+        if (method === 'google') {
+          const decision = await evaluateLogin(user, ctx, method);
+          if (!decision.allowed) {
+            await logLoginEvent(user, ctx, { status: 'BLOCKED_TIME_WINDOW', method, reason: decision.code });
+            return { status: 'blocked', code: decision.code, message: decision.message };
+          }
+          const session = await activateSession(existing, user, ctx, { method, otpVerified: false });
+          return { status: 'active', session };
+        }
         const deliveryMode = existing.otpDeliveryMode || (process.env.SMTP_HOST ? 'email' : 'console');
         return { status: 'otp_required', session: existing, deliveryMode };
       }
     }
   }
 
-  const decision = await evaluateLogin(user, ctx);
+  const decision = await evaluateLogin(user, ctx, method);
   if (!decision.allowed) {
     await logLoginEvent(user, ctx, { status: 'BLOCKED_TIME_WINDOW', method, reason: decision.code });
     return { status: 'blocked', code: decision.code, message: decision.message };
@@ -116,11 +125,11 @@ export async function startOrResumeSession({ user, ctx, method, existingSessionI
   return { status: 'otp_required', session, deliveryMode };
 }
 
-export async function activateSession(session, user, ctx) {
+export async function activateSession(session, user, ctx, { method = session.method, otpVerified = true } = {}) {
   const now = new Date();
   const activated = await Session.findOneAndUpdate(
     { _id: session._id, status: 'pending' },
-    { $set: { status: 'active', lastSeenAt: now, expiresAt: new Date(now.getTime() + SESSION_DAYS * DAY_MS) } },
+    { $set: { status: 'active', method, lastSeenAt: now, expiresAt: new Date(now.getTime() + SESSION_DAYS * DAY_MS) } },
     { new: true }
   );
   if (!activated) return Session.findById(session._id);
@@ -128,8 +137,8 @@ export async function activateSession(session, user, ctx) {
   await trustDevice(user._id, ctx);
   await trimSessions(user._id, activated.sessionId);
   const flags = activated.flags?.toObject?.() ?? activated.flags ?? {};
-  const common = { sessionId: activated.sessionId, method: activated.method, otpRequired: true, ...flags };
-  await logLoginEvent(user, ctx, { status: 'OTP_VERIFIED', ...common });
+  const common = { sessionId: activated.sessionId, method: activated.method, otpRequired: otpVerified, ...flags };
+  if (otpVerified) await logLoginEvent(user, ctx, { status: 'OTP_VERIFIED', ...common });
   await logLoginEvent(user, ctx, { status: 'SUCCESS', ...common });
   return activated;
 }

@@ -12,7 +12,11 @@ export function isMobileWindowOpen(now = new Date()) {
   return minutes >= OPEN_MIN && minutes < CLOSE_MIN;
 }
 
-export async function evaluateLogin(user, ctx) {
+export function loginRequiresOtp(method, reason) {
+  return method !== 'google' && reason !== null;
+}
+
+export async function evaluateLogin(user, ctx, method = 'password') {
   if (ctx.deviceType === 'mobile' && !isMobileWindowOpen()) {
     return {
       allowed: false,
@@ -34,5 +38,5 @@ export async function evaluateLogin(user, ctx) {
   else if (flags.newBrowser) reason = 'NEW_BROWSER';
   else if (CHALLENGE_NEW_IP && flags.newIp) reason = 'NEW_IP';
 
-  return { allowed: true, otpRequired: reason !== null, reason, flags };
+  return { allowed: true, otpRequired: loginRequiresOtp(method, reason), reason, flags };
 }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isMobileWindowOpen } from '../Services/loginPolicy.js';
+import { isMobileWindowOpen, loginRequiresOtp } from '../Services/loginPolicy.js';
 import { isPaymentWindowOpen } from '../Services/paymentWindow.js';
 import { dailyLimitFor } from '../Services/postLimits.js';
 
@@ -16,6 +16,17 @@ test('isMobileWindowOpen enforces 10:00 AM - 1:00 PM IST', () => {
   // 01:30 PM IST is 08:00 UTC (after window)
   const after = new Date('2026-10-19T08:00:00.000Z');
   assert.equal(isMobileWindowOpen(after), false);
+});
+
+test('Google sign-ins do not require an additional email OTP', () => {
+  assert.equal(loginRequiresOtp('google', 'CHROME'), false);
+  assert.equal(loginRequiresOtp('google', 'NEW_DEVICE'), false);
+});
+
+test('password sign-ins still require OTP for risky login reasons', () => {
+  assert.equal(loginRequiresOtp('password', 'CHROME'), true);
+  assert.equal(loginRequiresOtp('password', 'NEW_DEVICE'), true);
+  assert.equal(loginRequiresOtp('password', null), false);
 });
 
 test('isPaymentWindowOpen enforces 5:00 AM - 11:45 AM IST', () => {
