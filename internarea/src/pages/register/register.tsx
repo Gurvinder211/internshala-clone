@@ -4,7 +4,7 @@ import { useDispatch } from "react-redux";
 import { ArrowRight, Check, Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react";
 import axios from "axios";
 import { login } from "@/Feature/Userslice";
-import { signInWithPopup } from "firebase/auth";
+import { signInWithRedirect } from "firebase/auth";
 import { auth, isFirebaseConfigured, provider } from "@/firebase/firebase";
 import { startSession } from "@/lib/session";
 import LoginOtpModal from "@/Components/LoginOtpModal";
@@ -28,42 +28,19 @@ export default function Register() {
 
     setIsGoogleSubmitting(true);
     try {
-      await signInWithPopup(auth, provider);
-      const result = await startSession();
-      if (result.status === "active") {
-        dispatch(login(result.user));
-        await router.push("/");
-      } else if (result.status === "otp_required") {
-        setError(result.deliveryMode === "console"
-          ? "Email delivery is not configured. Check the backend terminal for the development verification code."
-          : `A verification code was sent to ${result.maskedEmail}. Complete the verification prompt to finish sign-up.`);
-      } else {
-        setError(result.message || "Google sign-up is currently unavailable.");
-      }
+      sessionStorage.setItem("redirectAfterLogin", "true");
+      await signInWithRedirect(auth, provider);
+      // Page will navigate away; the result is handled by onAuthStateChanged in _app.tsx
     } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        if (!err.response) {
-          setError("Google account connected, but the backend could not be reached at https://internshala-backend-69sb.onrender.com.");
-        } else if (err.response.status === 401) {
-          const firebaseError = err.response.data?.firebaseError;
-          setError(firebaseError
-            ? `Google connected, but Firebase Admin rejected the ID token: ${firebaseError}. Check that the frontend Firebase project and backend Firebase Admin project match.`
-            : "Google connected, but the backend rejected the ID token. Restart the backend and retry so it reports the Firebase verification error.");
-        } else {
-          setError(err.response.data?.error || err.response.data?.message || "Could not finish Google sign-up. Check the backend and try again.");
-        }
-      } else {
-        const code = typeof err === "object" && err && "code" in err ? String(err.code) : "";
-        const messages: Record<string, string> = {
-          "auth/unauthorized-domain": "This site is not authorized for Firebase sign-in. Add its hostname under Firebase Authentication > Settings > Authorized domains.",
-          "auth/operation-not-allowed": "Google sign-in is disabled. Enable Google under Firebase Authentication > Sign-in method.",
-          "auth/invalid-api-key": "The Firebase API key is invalid or belongs to a different project.",
-          "auth/popup-blocked": "Your browser blocked the Google sign-in popup. Allow pop-ups and try again.",
-          "auth/popup-closed-by-user": "Google sign-up was canceled.",
-        };
-        setError(messages[code] || `Google sign-up failed${code ? ` (${code})` : ""}. Check your Firebase Authentication settings and try again.`);
-      }
-    } finally {
+      sessionStorage.removeItem("redirectAfterLogin");
+      const code = typeof err === "object" && err && "code" in err ? String(err.code) : "";
+      const messages: Record<string, string> = {
+        "auth/unauthorized-domain": "This site is not authorized for Firebase sign-in. Add its hostname under Firebase Authentication > Settings > Authorized domains.",
+        "auth/operation-not-allowed": "Google sign-in is disabled. Enable Google under Firebase Authentication > Sign-in method.",
+        "auth/invalid-api-key": "The Firebase API key is invalid or belongs to a different project.",
+        "auth/popup-closed-by-user": "Google sign-up was canceled.",
+      };
+      setError(messages[code] || `Google sign-up failed${code ? ` (${code})` : ""}. Check your Firebase Authentication settings and try again.`);
       setIsGoogleSubmitting(false);
     }
   };

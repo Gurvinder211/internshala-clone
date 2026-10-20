@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useTranslation } from "next-i18next/pages";
 import { auth, isFirebaseConfigured, provider } from "../firebase/firebase";
 import { Menu, Search, UserRound, X } from "lucide-react";
-import { signInWithPopup, signOut } from "firebase/auth";
+import { signInWithRedirect, signOut } from "firebase/auth";
 import { toast } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
 import { logout, selectuser } from "@/Feature/Userslice";
@@ -25,7 +25,7 @@ const Navbar = () => {
 
     try {
       sessionStorage.setItem("redirectAfterLogin", "true");
-      await signInWithPopup(auth, provider);
+      await signInWithRedirect(auth, provider);
     } catch (error) {
       sessionStorage.removeItem("redirectAfterLogin");
       console.error(error);
@@ -36,9 +36,7 @@ const Navbar = () => {
           ? "Enable Google as a sign-in provider in Firebase Authentication."
           : code === "auth/invalid-api-key" || code === "auth/api-key-not-valid"
             ? "The Firebase API key is invalid or belongs to another project."
-            : code === "auth/popup-blocked"
-              ? "Allow pop-ups for this site, then try Google sign-in again."
-              : `Google sign-in failed (${code}). Check your Firebase configuration.`;
+            : `Google sign-in failed (${code}). Check your Firebase configuration.`;
       toast.error(message);
     }
   };
