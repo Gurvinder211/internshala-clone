@@ -2,7 +2,7 @@ import axios from "axios";
 import { signOut } from "firebase/auth";
 import { auth } from "@/firebase/firebase";
 
-export const API_BASE = "http://localhost:5000/api";
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://internshala-backend-69sb.onrender.com/api";
 
 export type SessionResult =
   | { status: "active"; sessionId: string; user: any }

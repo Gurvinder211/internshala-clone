@@ -3,7 +3,7 @@ import axios from "axios";
 import { auth } from "@/firebase/firebase";
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api",
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "https://internshala-backend-69sb.onrender.com/api",
 });
 
 api.interceptors.request.use(async (config) => {

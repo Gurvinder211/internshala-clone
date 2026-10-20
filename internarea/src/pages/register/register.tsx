@@ -43,7 +43,7 @@ export default function Register() {
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         if (!err.response) {
-          setError("Google account connected, but the backend could not be reached at http://localhost:5000.");
+          setError("Google account connected, but the backend could not be reached at https://internshala-backend-69sb.onrender.com.");
         } else if (err.response.status === 401) {
           const firebaseError = err.response.data?.firebaseError;
           setError(firebaseError
@@ -83,7 +83,7 @@ export default function Register() {
 
     setIsSubmitting(true);
     try {
-      const { data } = await axios.post("http://localhost:5000/api/auth/register", {
+      const { data } = await axios.post("https://internshala-backend-69sb.onrender.com/api/auth/register", {
         ...form,
         name: form.name.trim(),
         email: form.email.trim().toLowerCase(),

@@ -95,7 +95,7 @@ function AuthListener() {
             localStorage.removeItem("authToken");
           }
         } else if (axios.isAxiosError(err) && !err.response && hasFirebaseUser) {
-          toast.error("Google sign-in succeeded, but the backend could not be reached. Make sure the backend is running at http://localhost:5000.");
+          toast.error("Google sign-in succeeded, but the backend could not be reached. Check that the backend is available at https://internshala-backend-69sb.onrender.com.");
         } else {
           toast.error(
             (axios.isAxiosError(err) && err.response?.data?.error) || "Could not sign you in. Please try again."

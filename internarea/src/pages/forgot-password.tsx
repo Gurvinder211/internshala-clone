@@ -5,7 +5,7 @@ import axios from "axios";
 import { Loader2, Mail, Smartphone } from "lucide-react";
 
 type Method = "email" | "sms";
-const API = "http://localhost:5000/api/password-reset";
+const API = "https://internshala-backend-69sb.onrender.com/api/password-reset";
 const INPUT_CLASS = "h-12 w-full border border-[#d9e0d9] bg-[#fbfcfa] px-4 text-sm text-[#1c2b25] outline-none transition placeholder:text-[#9aa79e] focus:border-[#557d5e] focus:ring-4 focus:ring-[#557d5e]/10";
 
 export default function ForgotPassword() {

@@ -50,7 +50,7 @@ type FeedComment = {
   createdAt?: string;
 };
 
-const API_ORIGIN = "http://localhost:5000";
+const API_ORIGIN = "https://internshala-backend-69sb.onrender.com";
 const EDIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes configurable limit
 
 const POPULAR_TAGS = ["internship", "career", "tech", "jobs", "resume", "design", "interview"];

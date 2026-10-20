@@ -28,7 +28,7 @@ export default function Login() {
     setError("");
     setIsSubmitting(true);
     try {
-      const { data } = await axios.post("http://localhost:5000/api/auth/login", {
+      const { data } = await axios.post("https://internshala-backend-69sb.onrender.com/api/auth/login", {
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });
