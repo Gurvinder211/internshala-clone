@@ -1,5 +1,56 @@
 import { createTransport } from 'nodemailer';
 
+function senderAddress(from) {
+  const match = from.match(/^(.*?)\s*<([^<>]+)>$/);
+  return match
+    ? { email: match[2], name: match[1].trim().replace(/^["']|["']$/g, '') }
+    : { email: from };
+}
+
+async function sendWithSendGrid({ to, subject, html, text }) {
+  const from = process.env.EMAIL_FROM || process.env.SMTP_FROM;
+  if (!from) {
+    const error = new Error('EMAIL_FROM is required when SENDGRID_API_KEY is configured');
+    error.code = 'EMAIL_FROM_NOT_CONFIGURED';
+    throw error;
+  }
+
+  let response;
+  try {
+    response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.SENDGRID_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email: to }] }],
+        from: senderAddress(from),
+        subject,
+        content: [
+          { type: 'text/plain', value: text },
+          { type: 'text/html', value: html },
+        ],
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch (cause) {
+    const error = new Error('Could not reach the email API', { cause });
+    error.code = 'EMAIL_API_UNAVAILABLE';
+    throw error;
+  }
+
+  if (!response.ok) {
+    const details = await response.text();
+    console.error(`Email API rejected the message (${response.status}): ${details}`);
+    const error = new Error('Email API rejected the message');
+    error.code = 'EMAIL_API_REJECTED';
+    throw error;
+  }
+
+  return { deliveryMode: 'email' };
+}
+
 async function sendWithResend({ to, subject, html, text }) {
   const from = process.env.EMAIL_FROM || process.env.SMTP_FROM;
   if (!from) {
@@ -37,6 +88,10 @@ async function sendWithResend({ to, subject, html, text }) {
 }
 
 async function sendMail({ to, subject, html, text }) {
+  if (process.env.SENDGRID_API_KEY) {
+    return sendWithSendGrid({ to, subject, html, text });
+  }
+
   if (process.env.RESEND_API_KEY) {
     return sendWithResend({ to, subject, html, text });
   }
@@ -44,7 +99,7 @@ async function sendMail({ to, subject, html, text }) {
   const host = process.env.SMTP_HOST;
   if (!host) {
     if (process.env.NODE_ENV === 'production') {
-      const error = new Error('RESEND_API_KEY or SMTP_HOST is required to send email in production');
+      const error = new Error('SENDGRID_API_KEY, RESEND_API_KEY, or SMTP_HOST is required to send email in production');
       error.code = 'EMAIL_NOT_CONFIGURED';
       throw error;
     }

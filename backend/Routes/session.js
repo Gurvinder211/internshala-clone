@@ -50,7 +50,7 @@ router.post('/session', authenticate, async (req, res) => {
     }
     if (err.code === 'EMAIL_NOT_CONFIGURED') {
       return res.status(503).json({
-        error: 'Email verification is not configured. Set RESEND_API_KEY and EMAIL_FROM in the Render service environment.',
+        error: 'Email verification is not configured. Set SENDGRID_API_KEY and EMAIL_FROM, or configure another email provider in the Render service environment.',
         code: 'EMAIL_NOT_CONFIGURED',
       });
     }
@@ -68,7 +68,7 @@ router.post('/session', authenticate, async (req, res) => {
     }
     if (err.code === 'EMAIL_API_REJECTED') {
       return res.status(503).json({
-        error: 'The email provider rejected the message. Check RESEND_API_KEY and confirm EMAIL_FROM is verified.',
+        error: 'The email provider rejected the message. Check the configured API key and confirm EMAIL_FROM is a verified sender.',
         code: 'EMAIL_API_REJECTED',
       });
     }
