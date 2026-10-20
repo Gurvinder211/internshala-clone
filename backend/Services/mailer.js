@@ -99,6 +99,9 @@ async function sendMail({ to, subject, html, text }) {
       host,
       port,
       secure: port === 465,
+      // Some Render runtimes cannot route IPv6 SMTP connections. Force DNS
+      // resolution/connection over IPv4 so smtp.gmail.com remains reachable.
+      family: 4,
       auth,
       connectionTimeout: 10_000,
       greetingTimeout: 10_000,
