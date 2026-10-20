@@ -10,7 +10,10 @@ import { getAuth, GoogleAuthProvider } from "firebase/auth";
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: "internshala-be05a.firebaseapp.com",
+  // Use the app's own domain as authDomain so Firebase's auth handler is
+  // proxied through the same origin (see next.config.ts rewrites).
+  // This eliminates the cross-origin iframe that ad/content blockers intercept.
+  authDomain: process.env.NEXT_PUBLIC_AUTH_DOMAIN || "internshala-be05a.firebaseapp.com",
   projectId: "internshala-be05a",
   storageBucket: "internshala-be05a.firebasestorage.app",
   messagingSenderId: "820860060691",
