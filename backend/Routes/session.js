@@ -48,6 +48,18 @@ router.post('/session', authenticate, async (req, res) => {
         code: 'SMTP_AUTH_FAILED',
       });
     }
+    if (err.code === 'SMTP_NOT_CONFIGURED') {
+      return res.status(503).json({
+        error: 'Email verification is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, and SMTP_FROM in the Render service environment.',
+        code: 'SMTP_NOT_CONFIGURED',
+      });
+    }
+    if (['ECONNECTION', 'ECONNREFUSED', 'ETIMEDOUT', 'ESOCKET'].includes(err.code)) {
+      return res.status(503).json({
+        error: 'The email service is unavailable. Check the SMTP host, port, and connectivity in the Render service environment.',
+        code: 'SMTP_UNAVAILABLE',
+      });
+    }
     res.status(500).json({ error: 'Could not start your session' });
   }
 });

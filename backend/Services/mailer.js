@@ -4,7 +4,9 @@ async function sendMail({ to, subject, html, text }) {
   const host = process.env.SMTP_HOST;
   if (!host) {
     if (process.env.NODE_ENV === 'production') {
-      throw new Error('SMTP_HOST is required to send email in production');
+      const error = new Error('SMTP_HOST is required to send email in production');
+      error.code = 'SMTP_NOT_CONFIGURED';
+      throw error;
     }
     console.log(`\n[DEV MAIL ONLY - NOT SENT] to: ${to}\nsubject: ${subject}\n${text}\n`);
     return { deliveryMode: 'console' };
