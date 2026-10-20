@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useTranslation } from "next-i18next/pages";
 import { auth, isFirebaseConfigured, provider } from "../firebase/firebase";
 import { Menu, Search, UserRound, X } from "lucide-react";
-import { signInWithRedirect, signOut } from "firebase/auth";
+import { signInWithPopup, signInWithRedirect, signOut } from "firebase/auth";
 import { toast } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
 import { logout, selectuser } from "@/Feature/Userslice";
@@ -17,28 +17,46 @@ const Navbar = () => {
   const user = useSelector(selectuser);
   const dispatch = useDispatch();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const handlelogin = async () => {
+  // IMPORTANT: handler must be non-async so signInWithPopup is called
+  // synchronously within the click event — Safari blocks window.open() in async
+  // functions even without any prior await.
+  const handlelogin = () => {
     if (!isFirebaseConfigured) {
       toast.error("Google sign-in is not configured. Add NEXT_PUBLIC_FIREBASE_API_KEY to internarea/.env.local.");
       return;
     }
+    sessionStorage.setItem("redirectAfterLogin", "true");
 
-    try {
-      sessionStorage.setItem("redirectAfterLogin", "true");
-      await signInWithRedirect(auth, provider);
-    } catch (error) {
+    signInWithPopup(auth, provider).catch((error) => {
+      const code: string = typeof error === "object" && error && "code" in error ? String((error as any).code) : "";
+
+      if (code === "auth/popup-blocked") {
+        // Browser or ad-blocker blocked the popup → fall back to redirect.
+        // The Next.js rewrite proxies /__/auth/* through the same origin so
+        // cross-origin iframe blockers (AdGuard, Safari ITP) cannot interfere.
+        toast.info("Popup blocked — redirecting to Google sign-in…");
+        signInWithRedirect(auth, provider).catch((redirectErr) => {
+          sessionStorage.removeItem("redirectAfterLogin");
+          console.error("redirect fallback failed:", redirectErr);
+          toast.error("Google sign-in failed. Please allow pop-ups for this site or try a different browser.");
+        });
+        return;
+      }
+
       sessionStorage.removeItem("redirectAfterLogin");
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return;
+
       console.error(error);
-      const code = typeof error === "object" && error && "code" in error ? String(error.code) : "unknown";
-      const message = code === "auth/unauthorized-domain"
-        ? "Add this site to Firebase Authentication's authorized domains."
-        : code === "auth/operation-not-allowed"
+      const message =
+        code === "auth/unauthorized-domain"
+          ? "Add this site to Firebase Authentication's authorized domains."
+          : code === "auth/operation-not-allowed"
           ? "Enable Google as a sign-in provider in Firebase Authentication."
           : code === "auth/invalid-api-key" || code === "auth/api-key-not-valid"
-            ? "The Firebase API key is invalid or belongs to another project."
-            : `Google sign-in failed (${code}). Check your Firebase configuration.`;
+          ? "The Firebase API key is invalid or belongs to another project."
+          : `Google sign-in failed (${code}). Check your Firebase configuration.`;
       toast.error(message);
-    }
+    });
   };
   const handlelogout = async () => {
     try { await api.post("/auth/logout"); } catch { /* already gone: fine */ }
