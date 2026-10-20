@@ -20,7 +20,7 @@ import hiCommon from "../../public/locales/hi/common.json";
 import ptCommon from "../../public/locales/pt/common.json";
 import zhCommon from "../../public/locales/zh/common.json";
 import { startSession, installSessionInterceptors, clearLocalSession } from "@/lib/session";
-import { signOut } from "firebase/auth";
+import { signOut, getRedirectResult } from "firebase/auth";
 
 const i18nConfig = {
   i18n: {
@@ -104,6 +104,22 @@ function AuthListener() {
         dispatch(logout());
       }
     };
+
+    // Process the Google redirect result BEFORE setting up onAuthStateChanged.
+    // Without this, auth.currentUser is null when startSession() fires its
+    // credentialHeader() call, so the backend receives no Firebase ID token.
+    getRedirectResult(auth).catch((err) => {
+      console.error("getRedirectResult error:", err);
+      const code = err?.code ?? "";
+      if (code !== "auth/popup-closed-by-user") {
+        toast.error(
+          code === "auth/unauthorized-domain"
+            ? "Add this site to Firebase Authentication's authorized domains."
+            : `Google sign-in failed after redirect (${code}). Check your Firebase configuration.`
+        );
+      }
+      sessionStorage.removeItem("redirectAfterLogin");
+    });
 
     return auth.onAuthStateChanged((u) => void restore(!!u));
   }, [dispatch, router]);
