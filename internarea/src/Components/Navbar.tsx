@@ -24,8 +24,10 @@ const Navbar = () => {
     }
 
     try {
+      sessionStorage.setItem("redirectAfterLogin", "true");
       await signInWithPopup(auth, provider);
     } catch (error) {
+      sessionStorage.removeItem("redirectAfterLogin");
       console.error(error);
       const code = typeof error === "object" && error && "code" in error ? String(error.code) : "unknown";
       const message = code === "auth/unauthorized-domain"

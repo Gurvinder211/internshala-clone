@@ -7,6 +7,7 @@ import { store } from "../store/store";
 import { Provider, useDispatch } from "react-redux";
 import { appWithTranslation } from "next-i18next/pages";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 import { auth } from "@/firebase/firebase";
 import { login, logout } from "@/Feature/Userslice";
 import axios from "axios";
@@ -39,9 +40,11 @@ const i18nConfig = {
 
 function AuthListener() {
   const dispatch = useDispatch();
+  const router = useRouter();
   const [challenge, setChallenge] = useState<{ maskedEmail: string; deliveryMode?: "email" | "console" } | null>(null);
 
   const abandonLogin = async (message?: string) => {
+    sessionStorage.removeItem("redirectAfterLogin");
     clearLocalSession();
     await signOut(auth).catch(() => {});
     setChallenge(null);
@@ -72,10 +75,17 @@ function AuthListener() {
       }
       try {
         const result = await startSession();
-        if (result.status === "active") dispatch(login(result.user));
+        if (result.status === "active") {
+          dispatch(login(result.user));
+          if (sessionStorage.getItem("redirectAfterLogin") === "true") {
+            sessionStorage.removeItem("redirectAfterLogin");
+            void router.replace("/internship");
+          }
+        }
         else if (result.status === "otp_required") setChallenge({ maskedEmail: result.maskedEmail, deliveryMode: result.deliveryMode });
         else await abandonLogin(result.message);
       } catch (err) {
+        sessionStorage.removeItem("redirectAfterLogin");
         if (axios.isAxiosError(err) && err.response?.status === 401) {
           if (hasFirebaseUser) {
             clearLocalSession();
@@ -96,13 +106,20 @@ function AuthListener() {
     };
 
     return auth.onAuthStateChanged((u) => void restore(!!u));
-  }, [dispatch]);
+  }, [dispatch, router]);
 
   return challenge ? (
     <LoginOtpModal
       maskedEmail={challenge.maskedEmail}
       deliveryMode={challenge.deliveryMode}
-      onVerified={(user) => { dispatch(login(user)); setChallenge(null); }}
+      onVerified={(user) => {
+        dispatch(login(user));
+        setChallenge(null);
+        if (sessionStorage.getItem("redirectAfterLogin") === "true") {
+          sessionStorage.removeItem("redirectAfterLogin");
+          void router.replace("/internship");
+        }
+      }}
       onCancel={(message) => void abandonLogin(message)}
     />
   ) : null;

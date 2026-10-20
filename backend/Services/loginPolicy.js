@@ -31,6 +31,7 @@ export async function evaluateLogin(user, ctx) {
   let reason = null;
   if (ctx.isChrome) reason = 'CHROME';
   else if (flags.newDevice) reason = 'NEW_DEVICE';
+  else if (flags.newBrowser) reason = 'NEW_BROWSER';
   else if (CHALLENGE_NEW_IP && flags.newIp) reason = 'NEW_IP';
 
   return { allowed: true, otpRequired: reason !== null, reason, flags };

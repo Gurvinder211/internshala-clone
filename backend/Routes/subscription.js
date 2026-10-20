@@ -37,19 +37,23 @@ function makeInvoiceNumber(tx) {
 
 function subscriptionView(user) {
   const s = user.subscription;
-  const unlimited = s.quotaLimit === UNLIMITED;
+  const plan = PLANS[s.plan] ? s.plan : 'FREE';
+  const quotaLimit = Number.isFinite(s.quotaLimit) ? s.quotaLimit : PLANS[plan].quota;
+  const quotaUsed = Number.isFinite(s.quotaUsed) ? s.quotaUsed : 0;
+  const cycleStartDate = s.cycleStartDate || new Date();
+  const unlimited = quotaLimit === UNLIMITED;
   return {
-    plan: s.plan,
-    planName: PLANS[s.plan].name,
+    plan,
+    planName: PLANS[plan].name,
     isPremium: user.isPremium,
-    quotaLimit: unlimited ? null : s.quotaLimit,
+    quotaLimit: unlimited ? null : quotaLimit,
     unlimited,
-    quotaUsed: s.quotaUsed,
-    quotaRemaining: unlimited ? null : Math.max(0, s.quotaLimit - s.quotaUsed),
+    quotaUsed,
+    quotaRemaining: unlimited ? null : Math.max(0, quotaLimit - quotaUsed),
     validTill: s.validTill,
     renewalDate: s.validTill,
     nextPlan: s.nextPlan,
-    quotaResetsAt: new Date(new Date(s.cycleStartDate).getTime() + 30 * 24 * 60 * 60 * 1000),
+    quotaResetsAt: new Date(new Date(cycleStartDate).getTime() + 30 * 24 * 60 * 60 * 1000),
   };
 }
 

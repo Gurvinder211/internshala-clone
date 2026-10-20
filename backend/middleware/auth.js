@@ -6,7 +6,15 @@ import { ensureUsername } from '../Services/username.js';
 import { isMobileWindowOpen } from '../Services/loginPolicy.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
-const ENFORCE_MOBILE_WINDOW_ON_ACTIVE_SESSIONS = false;
+const ENFORCE_MOBILE_WINDOW_ON_ACTIVE_SESSIONS = true;
+
+// Routes that a user with mustChangePassword=true is still allowed to call.
+// Anything else returns 403 PASSWORD_CHANGE_REQUIRED until the password is updated.
+const CHANGE_PASSWORD_ALLOWED_PATHS = new Set([
+  '/api/auth/change-password',
+  '/api/auth/logout',
+  '/api/auth/me',
+]);
 
 async function identify(req) {
   const authHeader = req.headers.authorization;
@@ -68,6 +76,24 @@ const protect = async (req, res, next) => {
       return res.status(403).json({ message: 'Mobile access is only available 10:00 AM to 1:00 PM IST.', code: 'MOBILE_TIME_WINDOW' });
     }
 
+    // Server-side enforcement of forced password change.  A client-side
+    // redirect can be bypassed; blocking it here ensures the API is never
+    // reachable until the user actually changes their password.
+    if (found.user.mustChangePassword) {
+      const normalizedPath = req.path.startsWith('/') ? `/api${req.path}` : req.path;
+      const fullPath = req.baseUrl ? `${req.baseUrl}${req.path}` : normalizedPath;
+      const allowed = CHANGE_PASSWORD_ALLOWED_PATHS.has(fullPath) ||
+        req.originalUrl?.startsWith('/api/auth/change-password') ||
+        req.originalUrl?.startsWith('/api/auth/logout') ||
+        req.originalUrl?.startsWith('/api/auth/me');
+      if (!allowed) {
+        return res.status(403).json({
+          message: 'You must change your password before continuing.',
+          code: 'PASSWORD_CHANGE_REQUIRED',
+        });
+      }
+    }
+
     if (Date.now() - session.lastSeenAt.getTime() > 60_000) {
       Session.updateOne({ _id: session._id }, { $set: { lastSeenAt: new Date() } }).catch(() => {});
     }
@@ -98,6 +124,14 @@ async function tryFirebase(token, req) {
     return null;
   }
   const normalizedEmail = email.toLowerCase();
+  let photo = picture || null;
+  if (!photo) {
+    try {
+      photo = (await getAuth().getUser(uid)).photoURL || null;
+    } catch (error) {
+      console.warn('Firebase profile photo lookup failed:', error.message);
+    }
+  }
 
   let user = await User.findOne({ firebaseUid: uid });
   if (!user) {
@@ -109,7 +143,7 @@ async function tryFirebase(token, req) {
           firebaseUid: uid,
           name: name || normalizedEmail.split('@')[0],
           emailVerified: email_verified || false,
-          photo: picture || null,
+          photo,
         },
       },
       { new: true, upsert: true, runValidators: true }
@@ -118,11 +152,11 @@ async function tryFirebase(token, req) {
     const changed =
       (name && user.name !== name) ||
       user.emailVerified !== !!email_verified ||
-      (picture && user.photo !== picture);
+      (photo && user.photo !== photo);
     if (changed) {
       user.name = name || user.name;
       user.emailVerified = email_verified || user.emailVerified;
-      user.photo = picture || user.photo;
+      user.photo = photo || user.photo;
       await user.save();
     }
   }

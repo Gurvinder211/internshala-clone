@@ -4,8 +4,10 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "tsx watch index.js"
+    "test": "node --test tests/*.test.js",
+    "seed:samples": "node scripts/seedSampleListings.js",
+    "dev": "tsx watch index.js",
+    "start": "node index.js"
   },
   "keywords": [],
   "author": "",

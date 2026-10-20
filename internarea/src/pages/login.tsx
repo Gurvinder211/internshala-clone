@@ -20,7 +20,7 @@ export default function Login() {
 
   const finish = (user: any, mustChangePassword: boolean) => {
     dispatch(loginAction(user));
-    void router.push(mustChangePassword ? "/change-password" : "/");
+    void router.push(mustChangePassword ? "/change-password" : "/internship");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -6,9 +6,32 @@ import Post from '../Model/Post.js';
 import Comment from '../Model/Comment.js';
 import User from '../Model/User.js';
 import FriendRequest from '../Model/FriendRequest.js';
-import { canPostToday } from '../Services/postLimits.js';
+import { canPostToday, releasePostSlot } from '../Services/postLimits.js';
 import { extractHashtags, extractMentions, isDuplicateRecent } from '../Services/postContent.js';
 import { notify } from '../Services/notify.js';
+
+/**
+ * Returns true when the requesting user is allowed to view/engage with a post.
+ * Public posts are always visible.  Friends-only posts require a confirmed
+ * friendship.  Private posts are only visible to the author.
+ */
+async function canEngageWith(post, requestingUserId) {
+  if (post.privacy === 'public') return true;
+  if (post.userId.equals(requestingUserId)) return true;
+  if (post.privacy === 'friends') {
+    // Check confirmed friendship in both directions
+    const friendship = await FriendRequest.findOne({
+      status: 'accepted',
+      $or: [
+        { fromUserId: post.userId, toUserId: requestingUserId },
+        { fromUserId: requestingUserId, toUserId: post.userId },
+      ],
+    });
+    return friendship !== null;
+  }
+  // privacy === 'private' — only the author
+  return false;
+}
 
 const router = Router();
 const EDIT_WINDOW_MINUTES = 15;
@@ -22,6 +45,9 @@ function withinEditWindow(post) {
 
 // ---- Create ----
 router.post('/', protect, postLimiter, uploadPostMedia, async (req, res) => {
+  // Track whether a quota slot has been reserved so we can roll it back on
+  // any failure path that occurs after canPostToday returns allowed=true.
+  let slotReserved = false;
   try {
     const { content = '', privacy = 'public' } = req.body;
     if (!content.trim() && !req.file) {
@@ -37,11 +63,17 @@ router.post('/', protect, postLimiter, uploadPostMedia, async (req, res) => {
         code: 'POST_LIMIT',
       });
     }
+    // Slot has been atomically reserved; every exit path below must either
+    // commit (post created) or call releasePostSlot to undo the reservation.
+    slotReserved = true;
 
     const mediaUrl = req.file ? `/uploads/posts/${req.file.filename}` : null;
     const mediaType = req.file ? (req.file.mimetype.startsWith('video') ? 'video' : 'image') : 'none';
 
     if (await isDuplicateRecent(req.user._id, content, mediaUrl)) {
+      // Roll back: the duplicate will not be published.
+      await releasePostSlot(req.user._id);
+      slotReserved = false;
       return res.status(409).json({ error: 'Looks like a duplicate of your last post', code: 'DUPLICATE' });
     }
 
@@ -56,11 +88,17 @@ router.post('/', protect, postLimiter, uploadPostMedia, async (req, res) => {
       hashtags: extractHashtags(content),
       mentions,
     });
+    // Slot committed — post is now in the DB.
+    slotReserved = false;
 
     mentions.forEach((uid) => notify({ userId: uid, type: 'mention', fromUserId: req.user._id, postId: post._id }));
 
     res.status(201).json({ post });
   } catch (err) {
+    // Roll back the reserved slot so the user isn't charged for a failed post.
+    if (slotReserved) {
+      releasePostSlot(req.user._id).catch((e) => console.error('quota rollback failed:', e));
+    }
     console.error('create post failed:', err);
     res.status(500).json({ error: 'Could not create post' });
   }
@@ -99,6 +137,9 @@ router.delete('/:id', protect, async (req, res) => {
 router.post('/:id/like', protect, async (req, res) => {
   const post = await Post.findById(req.params.id);
   if (!post) return res.status(404).json({ error: 'Post not found' });
+  if (!(await canEngageWith(post, req.user._id))) {
+    return res.status(403).json({ error: 'You do not have permission to engage with this post' });
+  }
   const has = post.likes.some((id) => id.equals(req.user._id));
   await Post.updateOne({ _id: post._id }, has ? { $pull: { likes: req.user._id } } : { $addToSet: { likes: req.user._id } });
   if (!has) notify({ userId: post.userId, type: 'like', fromUserId: req.user._id, postId: post._id });
@@ -114,10 +155,14 @@ router.post('/:id/save', protect, async (req, res) => {
 });
 
 router.post('/:id/share', protect, async (req, res) => {
-  const post = await Post.findByIdAndUpdate(req.params.id, { $inc: { shareCount: 1 } }, { new: true });
+  const post = await Post.findById(req.params.id);
   if (!post) return res.status(404).json({ error: 'Post not found' });
+  if (!(await canEngageWith(post, req.user._id))) {
+    return res.status(403).json({ error: 'You do not have permission to engage with this post' });
+  }
+  await Post.updateOne({ _id: post._id }, { $inc: { shareCount: 1 } });
   notify({ userId: post.userId, type: 'share', fromUserId: req.user._id, postId: post._id });
-  res.json({ shareCount: post.shareCount });
+  res.json({ shareCount: post.shareCount + 1 });
 });
 
 router.post('/:id/report', protect, async (req, res) => {
@@ -139,6 +184,9 @@ router.post('/:id/comments', protect, postLimiter, async (req, res) => {
   if (!content?.trim()) return res.status(400).json({ error: 'Comment cannot be empty' });
   const post = await Post.findById(req.params.id);
   if (!post) return res.status(404).json({ error: 'Post not found' });
+  if (!(await canEngageWith(post, req.user._id))) {
+    return res.status(403).json({ error: 'You do not have permission to comment on this post' });
+  }
 
   const mentions = await extractMentions(content);
   const comment = await Comment.create({ postId: post._id, userId: req.user._id, content, mentions });

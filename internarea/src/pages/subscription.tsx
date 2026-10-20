@@ -2,35 +2,34 @@ import { useEffect, useState } from "react";
 import Script from "next/script";
 import { toast } from "react-toastify";
 import axios from "axios";
+import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/firebase/firebase";
+import { useSelector } from "react-redux";
+import { selectuser } from "@/Feature/Userslice";
+import api from "@/lib/api";
 import { CalendarDays, Check, Crown, Gem, RefreshCw, ShieldCheck, Sparkles, Zap } from "lucide-react";
 
 declare global { interface Window { Razorpay: any } }
 
 export default function Subscription() {
+  const user = useSelector(selectuser);
   const [plans, setPlans] = useState<any[]>([]);
   const [sub, setSub] = useState<any>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [accountMessage, setAccountMessage] = useState("");
-
-  const getAuthHeaders = async () => {
-    if (auth.currentUser) {
-      return { Authorization: `Bearer ${await auth.currentUser.getIdToken()}` };
-    }
-
-    const token = localStorage.getItem("authToken");
-    if (!token) throw new Error("Please log in to manage your subscription");
-    return { Authorization: `Bearer ${token}` };
-  };
+  const [showLoginLink, setShowLoginLink] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+  const [hasCredential, setHasCredential] = useState(false);
 
   const load = async () => {
     setLoading(true);
     setLoadError("");
     setAccountMessage("");
+    setShowLoginLink(false);
     try {
-      const { data } = await axios.get("http://localhost:5000/api/subscription/plans");
+      const { data } = await api.get("/subscription/plans");
       setPlans(data.plans);
     } catch {
       setLoadError("We couldn't load the plans. Check that the backend is running, then try again.");
@@ -39,24 +38,44 @@ export default function Subscription() {
     }
 
     try {
-      const headers = await getAuthHeaders();
-      const { data } = await axios.get("http://localhost:5000/api/subscription/me", { headers });
+      const { data } = await api.get("/subscription/me");
       setSub(data.subscription);
-    } catch {
+      setAccountMessage("");
+    } catch (error) {
       setSub(null);
-      setAccountMessage("Log in to view your current plan and purchase a subscription.");
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        const credentialPresent = hasCredential || (typeof window !== "undefined" && localStorage.getItem("authToken"));
+        setAccountMessage(credentialPresent
+          ? "Your sign-in is still being verified. Complete the verification prompt, then your subscription will load."
+          : "Log in to view your current plan and purchase a subscription.");
+        setShowLoginLink(!credentialPresent);
+      } else {
+        setAccountMessage(axios.isAxiosError(error)
+          ? error.response?.data?.error || "We couldn't load your subscription. Please try again."
+          : "We couldn't load your subscription. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
   };
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      const token = localStorage.getItem("authToken");
+      setHasCredential(Boolean(firebaseUser || token));
+      setAuthReady(true);
+    });
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (authReady) void load();
+  }, [authReady, user]);
 
   const buy = async (plan: string) => {
     if (busy) return; // stops double-clicks creating duplicate attempts
     setBusy(true);
     try {
-      const headers = await getAuthHeaders();
-      const { data } = await axios.post("http://localhost:5000/api/subscription/order", { plan }, { headers });
+      const { data } = await api.post("/subscription/order", { plan });
 
       const rzp = new window.Razorpay({
         key: data.keyId,
@@ -67,12 +86,12 @@ export default function Subscription() {
         description: `${plan} plan`,
         handler: async (resp: any) => {
           try {
-            await axios.post("http://localhost:5000/api/subscription/verify", resp, { headers });
+            await api.post("/subscription/verify", resp);
             toast.success("Payment successful. Your plan is active.");
           } catch {
             // Money may have moved: ask the server to check with Razorpay.
             try {
-              await axios.post("http://localhost:5000/api/subscription/reconcile", { orderId: data.orderId }, { headers });
+              await api.post("/subscription/reconcile", { orderId: data.orderId });
               toast.success("Payment confirmed. Your plan is active.");
             } catch {
               toast.error("We couldn't confirm your payment yet. If you were charged, refresh in a minute.");
@@ -83,15 +102,15 @@ export default function Subscription() {
         },
         modal: {
           ondismiss: () => {
-            axios.post("http://localhost:5000/api/subscription/failed", { razorpay_order_id: data.orderId, cancelled: true, reason: "closed by user" }, { headers }).catch(() => {});
+            api.post("/subscription/failed", { razorpay_order_id: data.orderId, cancelled: true, reason: "closed by user" }).catch(() => {});
             setBusy(false);
           },
         },
       });
       rzp.on("payment.failed", (r: any) => {
-        axios.post("http://localhost:5000/api/subscription/failed", {
+        api.post("/subscription/failed", {
           razorpay_order_id: data.orderId, cancelled: false, reason: r?.error?.description,
-        }, { headers }).catch(() => {});
+        }).catch(() => {});
       });
       rzp.open();
     } catch (err: any) {
@@ -149,7 +168,7 @@ export default function Subscription() {
         {accountMessage && (
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
             <span>{accountMessage}</span>
-            <a href="/login" className="font-semibold underline underline-offset-2">Log in</a>
+            {showLoginLink && <a href="/login" className="font-semibold underline underline-offset-2">Log in</a>}
           </div>
         )}
 
@@ -262,8 +281,7 @@ export default function Subscription() {
           <button className="text-sm font-medium text-slate-600 underline underline-offset-4 hover:text-red-700"
             onClick={async () => {
               try {
-                const headers = await getAuthHeaders();
-                const r = await axios.post("http://localhost:5000/api/subscription/cancel", {}, { headers });
+                const r = await api.post("/subscription/cancel", {});
                 toast.info(r.data.message);
                 load();
               } catch (err: unknown) {

@@ -6,7 +6,7 @@ const postSchema = new Schema({
   content: { type: String, maxlength: 3000, default: '' },
   mediaUrl: { type: String, default: null },
   mediaType: { type: String, enum: ['none', 'image', 'video'], default: 'none' },
-  privacy: { type: String, enum: ['public', 'friends'], default: 'public' },
+  privacy: { type: String, enum: ['public', 'friends', 'private'], default: 'public' },
 
   friendCountAtPost: { type: Number, required: true }, // historical, per spec
   hashtags: [{ type: String, lowercase: true, index: true }],

@@ -63,6 +63,7 @@ router.post('/french/request-otp', protect, async (req, res) => {
       userId: req.user._id,
       purpose: 'LANGUAGE_CHANGE',
       sentTo: req.user.email,
+      locale: req.user.language || 'en',
     });
     res.status(200).json({ success: true, expiresAt, cooldownSeconds });
   } catch (err) {

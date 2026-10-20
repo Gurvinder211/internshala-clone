@@ -76,6 +76,7 @@ router.post('/request', resetLimiter, async (req, res) => {
         purpose: 'PASSWORD_RESET',
         sentTo: method === 'sms' ? user.phone : user.email,
         channel: method,
+        locale: user.language || 'en',
       });
       await PasswordResetLog.create({ userId: user._id, method, verified: false, ...getClientContext(req) });
       return genericOk(devFlag(deliveryMode));

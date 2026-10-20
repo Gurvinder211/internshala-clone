@@ -10,16 +10,59 @@ const CYCLE_MS = CYCLE_DAYS * 24 * 60 * 60 * 1000;
  * Call before any read/decision that depends on plan or quota.
  */
 export async function refreshSubscription(user, now = new Date()) {
+  if (!user.subscription) {
+    user.subscription = {
+      plan: 'FREE', quotaLimit: PLANS.FREE.quota, quotaUsed: 0,
+      cycleStartDate: now, validTill: null, nextPlan: null,
+    };
+  }
   const sub = user.subscription;
   let changed = false;
 
-  if (sub.plan !== 'FREE' && sub.validTill && sub.validTill <= now) {
+  if (!PLANS[sub.plan]) {
     sub.plan = 'FREE';
     sub.quotaLimit = PLANS.FREE.quota;
     sub.quotaUsed = 0;
     sub.cycleStartDate = now;
     sub.validTill = null;
+    sub.nextPlan = null;
     user.isPremium = false;
+    changed = true;
+  }
+  if (!Number.isFinite(sub.quotaLimit)) {
+    sub.quotaLimit = PLANS[sub.plan].quota;
+    changed = true;
+  }
+  if (!Number.isFinite(sub.quotaUsed)) {
+    sub.quotaUsed = 0;
+    changed = true;
+  }
+  if (!sub.cycleStartDate) {
+    sub.cycleStartDate = now;
+    changed = true;
+  }
+
+  if (sub.plan !== 'FREE' && sub.validTill && sub.validTill <= now) {
+    // A scheduled downgrade/cancellation is stored in sub.nextPlan.
+    // Apply it rather than blindly resetting to FREE.
+    const scheduled = sub.nextPlan || 'FREE';
+    const scheduledPlan = PLANS[scheduled];
+
+    sub.plan = scheduled;
+    sub.quotaLimit = scheduledPlan ? scheduledPlan.quota : PLANS.FREE.quota;
+    sub.quotaUsed = 0;
+    sub.cycleStartDate = now;
+    sub.nextPlan = null;
+
+    if (scheduled !== 'FREE' && scheduledPlan) {
+      // Downgrade to a lower paid tier: set a fresh billing cycle.
+      sub.validTill = new Date(now.getTime() + CYCLE_MS);
+      user.isPremium = true;
+    } else {
+      // Cancellation or no scheduled plan: revert to Free.
+      sub.validTill = null;
+      user.isPremium = false;
+    }
     changed = true;
   }
 

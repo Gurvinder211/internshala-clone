@@ -5,6 +5,14 @@ const subscriptionSchema = new Schema({
   plan: {
     type: String,
     enum: ['FREE', 'BRONZE', 'SILVER', 'GOLD', null],
+    default: 'FREE',
+  },
+  // nextPlan holds the plan that takes effect at the end of the current billing
+  // cycle (scheduled downgrade / cancellation).  Must be in the schema so
+  // Mongoose's strict mode does not silently discard writes to this field.
+  nextPlan: {
+    type: String,
+    enum: ['FREE', 'BRONZE', 'SILVER', 'GOLD', null],
     default: null,
   },
   validTill: { type: Date, default: null },
