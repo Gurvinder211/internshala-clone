@@ -1,6 +1,7 @@
 services:
   - type: web
     name: internshala-backend
+    plan: free
     runtime: node
     rootDir: backend
     buildCommand: npm ci
