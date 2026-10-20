@@ -30,6 +30,7 @@ const port = process.env.PORT || 5000;
 
 const allowedOrigins = [
   "https://internshala-clone-git-main-gurvinders-projects-60de784b.vercel.app",
+  "https://internshala-clone-wheat.vercel.app",
   ...(process.env.CORS_ORIGIN || "http://localhost:3000").split(","),
 ]
   .map((origin) => origin.trim())
