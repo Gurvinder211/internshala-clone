@@ -1,10 +1,66 @@
 import { createTransport } from 'nodemailer';
 
+function mailError(message, code, cause) {
+  const error = new Error(message, cause ? { cause } : undefined);
+  error.code = code;
+  return error;
+}
+
 function senderAddress(from) {
   const match = from.match(/^(.*?)\s*<([^<>]+)>$/);
   return match
     ? { email: match[2], name: match[1].trim().replace(/^["']|["']$/g, '') }
     : { email: from };
+}
+
+async function sendWithAppsScript({ to, subject, html, text }) {
+  const secret = process.env.APPS_SCRIPT_MAIL_SECRET;
+  if (!secret) {
+    throw mailError(
+      'APPS_SCRIPT_MAIL_SECRET is required when APPS_SCRIPT_MAIL_URL is set',
+      'EMAIL_NOT_CONFIGURED'
+    );
+  }
+
+  let response;
+  try {
+    response = await fetch(process.env.APPS_SCRIPT_MAIL_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        secret,
+        to,
+        subject,
+        html,
+        text,
+        name: process.env.EMAIL_FROM_NAME || 'InternArea',
+      }),
+      redirect: 'follow',
+      signal: AbortSignal.timeout(25_000),
+    });
+  } catch (cause) {
+    throw mailError('Could not reach the email relay', 'EMAIL_API_UNAVAILABLE', cause);
+  }
+
+  let result = null;
+  try {
+    result = await response.json();
+  } catch {
+    // A non-JSON response commonly indicates an inaccessible Apps Script deployment.
+  }
+
+  if (!response.ok || !result?.ok) {
+    console.error(
+      `Email relay rejected the message (${response.status}):`,
+      result?.error || 'non-JSON response. Check the Apps Script deployment access and /exec URL.'
+    );
+    throw mailError('Email relay rejected the message', 'EMAIL_API_REJECTED');
+  }
+
+  if (typeof result.remaining === 'number' && result.remaining < 15) {
+    console.warn(`Gmail relay: only ${result.remaining} sends left today`);
+  }
+  return { deliveryMode: 'email' };
 }
 
 async function sendWithSendGrid({ to, subject, html, text }) {
@@ -88,6 +144,18 @@ async function sendWithResend({ to, subject, html, text }) {
 }
 
 async function sendMail({ to, subject, html, text }) {
+  if (process.env.APPS_SCRIPT_MAIL_URL) {
+    return sendWithAppsScript({ to, subject, html, text });
+  }
+
+  if (process.env.RESEND_API_KEY) {
+    return sendWithResend({ to, subject, html, text });
+  }
+
+  if (process.env.SENDGRID_API_KEY) {
+    return sendWithSendGrid({ to, subject, html, text });
+  }
+
   const host = process.env.SMTP_HOST;
   if (host) {
     const port = Number(process.env.SMTP_PORT) || 587;
@@ -120,18 +188,11 @@ async function sendMail({ to, subject, html, text }) {
     return { deliveryMode: 'email' };
   }
 
-  if (process.env.SENDGRID_API_KEY) {
-    return sendWithSendGrid({ to, subject, html, text });
-  }
-
-  if (process.env.RESEND_API_KEY) {
-    return sendWithResend({ to, subject, html, text });
-  }
-
   if (process.env.NODE_ENV === 'production') {
-    const error = new Error('SMTP_HOST, SENDGRID_API_KEY, or RESEND_API_KEY is required to send email in production');
-    error.code = 'EMAIL_NOT_CONFIGURED';
-    throw error;
+    throw mailError(
+      'APPS_SCRIPT_MAIL_URL, RESEND_API_KEY, SENDGRID_API_KEY, or SMTP_HOST is required to send email in production',
+      'EMAIL_NOT_CONFIGURED'
+    );
   }
   console.log(`\n[DEV MAIL ONLY - NOT SENT] to: ${to}\nsubject: ${subject}\n${text}\n`);
   return { deliveryMode: 'console' };

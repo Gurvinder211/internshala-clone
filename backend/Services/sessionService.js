@@ -66,7 +66,14 @@ export async function startOrResumeSession({ user, ctx, method, existingSessionI
           const session = await activateSession(existing, user, ctx, { method, otpVerified: false });
           return { status: 'active', session };
         }
-        const deliveryMode = existing.otpDeliveryMode || (process.env.SMTP_HOST ? 'email' : 'console');
+        const deliveryMode = existing.otpDeliveryMode || (
+          process.env.APPS_SCRIPT_MAIL_URL
+          || process.env.RESEND_API_KEY
+          || process.env.SENDGRID_API_KEY
+          || process.env.SMTP_HOST
+            ? 'email'
+            : 'console'
+        );
         return { status: 'otp_required', session: existing, deliveryMode };
       }
     }
