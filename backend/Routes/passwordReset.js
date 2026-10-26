@@ -42,7 +42,9 @@ router.post('/request', resetLimiter, async (req, res) => {
 
     const genericOk = (extra = {}) => res.status(200).json({
       success: true,
-      message: `If an account matches, a reset code has been sent${method === 'sms' ? ' by SMS' : ' to that email'}.`,
+      message: extra.deliveryMode === 'console'
+        ? 'Demo SMS mode is active. The code is available in the server logs for the configured test number.'
+        : `If an account matches, a reset code has been sent${method === 'sms' ? ' by SMS' : ' to that email'}.`,
       ...extra,
     });
     const user = await findUser(method, identifier);
@@ -143,7 +145,9 @@ router.post('/verify', resetLimiter, async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: method === 'sms' ? 'A new password has been sent to your mobile number by SMS.' : 'A new password has been sent to your email.',
+      message: delivery.deliveryMode === 'console'
+        ? 'Demo SMS mode is active. The temporary password is available in the server logs.'
+        : method === 'sms' ? 'A new password has been sent to your mobile number by SMS.' : 'A new password has been sent to your email.',
       ...devFlag(delivery.deliveryMode),
     });
   } catch (err) {

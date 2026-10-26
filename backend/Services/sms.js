@@ -1,4 +1,25 @@
+function normalizePhone(value) {
+  return String(value || '').replace(/[\s()-]/g, '');
+}
+
 async function sendSms({ to, text }) {
+  const demoEnabled = process.env.SMS_DEMO_ENABLED === 'true';
+  const demoPhone = normalizePhone(process.env.SMS_DEMO_PHONE);
+
+  // A deliberately narrow fallback for portfolio/demo deployments where an
+  // SMS provider is unavailable. It never sends a real message and can only
+  // be used for the one phone number configured in the environment.
+  if (demoEnabled) {
+    if (!demoPhone) {
+      throw new Error('SMS_DEMO_PHONE must be configured when SMS demo mode is enabled');
+    }
+    if (normalizePhone(to) !== demoPhone) {
+      throw new Error('SMS demo mode is limited to the configured test phone number');
+    }
+    console.log(`\n[SMS DEMO ONLY - NOT SENT] to: ${to}\n${text}\n`);
+    return { deliveryMode: 'console' };
+  }
+
   const sid = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
   const from = process.env.TWILIO_FROM;
