@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "next-i18next/pages";
 // const internshipData = [
 //   {
 //     _id: "1",
@@ -45,6 +46,7 @@ import React, { useEffect, useState } from "react";
 //   },
 // ];
 const index = () => {
+  const { t } = useTranslation("common");
   const [filteredInternships, setfilteredInternships] = useState<any>([]);
   const [isFiltervisible, setisFiltervisible] = useState(false);
   const [filter, setfilters] = useState({
@@ -105,20 +107,20 @@ const index = () => {
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-2">
                 <Filter className="h-5 w-5 text-blue-600" />
-                <span className="font-medium text-black">Filters</span>
+                <span className="font-medium text-black">{t("internships.filters")}</span>
               </div>
               <button
                 onClick={clearFilters}
                 className="text-sm text-blue-600 hover:text-blue-700"
               >
-                Clear all
+                {t("internships.clearAll")}
               </button>
             </div>
             <div className="space-y-6">
               {/* Profile/Category Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category
+                  {t("internships.category")}
                 </label>
                 <input
                   type="text"
@@ -126,13 +128,13 @@ const index = () => {
                   value={filter.category}
                   onChange={handlefilterchange}
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700"
-                  placeholder="e.g. Marketing Intern"
+                  placeholder={t("internships.categoryPlaceholder")}
                 />
               </div>
               {/* Location Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Location
+                  {t("internships.location")}
                 </label>
                 <input
                   type="text"
@@ -140,7 +142,7 @@ const index = () => {
                   value={filter.location}
                   onChange={handlefilterchange}
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700"
-                  placeholder="e.g. Mumbai"
+                  placeholder={t("internships.locationPlaceholder")}
                 />
               </div>
 
@@ -154,7 +156,7 @@ const index = () => {
                     onChange={handlefilterchange}
                     className="h-4 w-4 text-blue-600 rounded "
                   />
-                  <span className="text-gray-700">Work from home</span>
+                  <span className="text-gray-700">{t("internships.workFromHome")}</span>
                 </label>
                 <label className="flex items-center space-x-2">
                   <input
@@ -164,14 +166,14 @@ const index = () => {
                     onChange={handlefilterchange}
                     className="h-4 w-4 text-blue-600 rounded"
                   />
-                  <span className="text-gray-700">Part-time</span>
+                  <span className="text-gray-700">{t("internships.partTime")}</span>
                 </label>
               </div>
 
               {/* Stipend Range */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Monthly Stipend (₹)
+                  {t("internships.monthlyStipend")}
                 </label>
                 <input
                   type="range"
@@ -197,12 +199,12 @@ const index = () => {
                 className="w-full flex items-center justify-center space-x-2 bg-white p-3 rounded-lg shadow-sm text-black"
               >
                 <Filter className="h-5 w-5" />
-                <span> Show Filters</span>
+                <span>{t("internships.showFilters")}</span>
               </button>
             </div>
             <div className="bg-white p-4 rounded-lg shadow-sm mb-4">
               <p className="text-center font-medium text-black">
-                {filteredInternships.length} Internships found
+                {t("internships.results", { count: filteredInternships.length })}
               </p>
             </div>
             <div className="space-y-4">
@@ -213,7 +215,7 @@ const index = () => {
                 >
                   <div className="flex items-center space-x-2 text-blue-600 mb-4">
                     <ArrowUpRight className="h-5 w-5" />
-                    <span className="font-medium">Actively Hiring</span>
+                    <span className="font-medium">{t("internships.activelyHiring")}</span>
                   </div>
                   <h2 className="text-xl font-bold text-gray-900 mb-2">
                     {internship.title}
@@ -224,21 +226,21 @@ const index = () => {
                     <div className="flex items-center space-x-2 text-gray-600">
                       <PlayCircle className="h-5 w-5" />
                       <div>
-                        <p className="text-sm font-medium">Start Date</p>
+                        <p className="text-sm font-medium">{t("internships.startDate")}</p>
                         <p className="text-sm">{internship.startDate}</p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2 text-gray-600">
                       <Pin className="h-5 w-5" />
                       <div>
-                        <p className="text-sm font-medium">Location</p>
+                        <p className="text-sm font-medium">{t("internships.location")}</p>
                         <p className="text-sm">{internship.location}</p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2 text-gray-600">
                       <DollarSign className="h-5 w-5" />
                       <div>
-                        <p className="text-sm font-medium">Stipend</p>
+                        <p className="text-sm font-medium">{t("internships.stipend")}</p>
                         <p className="text-sm">{internship.stipend}</p>
                       </div>
                     </div>
@@ -246,11 +248,11 @@ const index = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm">
-                        Internship
+                        {t("navbar.internships")}
                       </span>
                       <div className="flex items-center space-x-1 text-green-600">
                         <Clock className="h-4 w-4" />
-                        <span className="text-sm">Posted recently</span>
+                        <span className="text-sm">{t("internships.postedRecently")}</span>
                       </div>
                     </div>
                     <Link
@@ -271,7 +273,7 @@ const index = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden">
           <div className="bg-white h-full w-full max-w-sm ml-auto p-6 overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-lg font-bold">Filters</h2>
+              <h2 className="text-lg font-bold">{t("internships.filters")}</h2>
               <button
                 onClick={() => setisFiltervisible(false)}
                 className="text-gray-400 hover:text-gray-600"
@@ -283,7 +285,7 @@ const index = () => {
               {/* Profile/Category Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category
+                  {t("internships.category")}
                 </label>
                 <input
                   type="text"
@@ -291,13 +293,13 @@ const index = () => {
                   value={filter.category}
                   onChange={handlefilterchange}
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700"
-                  placeholder="e.g. Marketing Intern"
+                  placeholder={t("internships.categoryPlaceholder")}
                 />
               </div>
               {/* Location Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Location
+                  {t("internships.location")}
                 </label>
                 <input
                   type="text"
@@ -305,7 +307,7 @@ const index = () => {
                   value={filter.location}
                   onChange={handlefilterchange}
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700"
-                  placeholder="e.g. Mumbai"
+                  placeholder={t("internships.locationPlaceholder")}
                 />
               </div>
 
@@ -319,7 +321,7 @@ const index = () => {
                     onChange={handlefilterchange}
                     className="h-4 w-4 text-blue-600 rounded "
                   />
-                  <span className="text-gray-700">Work from home</span>
+                  <span className="text-gray-700">{t("internships.workFromHome")}</span>
                 </label>
                 <label className="flex items-center space-x-2">
                   <input
@@ -329,14 +331,14 @@ const index = () => {
                     onChange={handlefilterchange}
                     className="h-4 w-4 text-blue-600 rounded"
                   />
-                  <span className="text-gray-700">Part-time</span>
+                  <span className="text-gray-700">{t("internships.partTime")}</span>
                 </label>
               </div>
 
               {/* Stipend Range */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Monthly Stipend (₹)
+                  {t("internships.monthlyStipend")}
                 </label>
                 <input
                   type="range"

@@ -26,6 +26,7 @@ import { toast } from "react-toastify";
 import api from "@/lib/api";
 import { useSelector } from "react-redux";
 import { selectuser } from "@/Feature/Userslice";
+import { useTranslation } from "next-i18next/pages";
 
 type FeedPost = {
   _id: string;
@@ -84,6 +85,7 @@ function Avatar({ name, photo, size = "md" }: { name?: string; photo?: string; s
 }
 
 export default function PublicSpace() {
+  const { t } = useTranslation("common");
   const user = useSelector(selectuser);
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [content, setContent] = useState("");
@@ -396,16 +398,16 @@ export default function PublicSpace() {
       <div className="border-b border-emerald-950/10 bg-[#e7f1eb]">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-7 sm:px-6 lg:px-8">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-800">InternArea community</p>
-            <h1 className="mt-1 text-2xl font-bold text-slate-950 sm:text-3xl">Public Space</h1>
-            <p className="mt-1 text-sm text-slate-600">Connect, share ideas, and discover opportunities from your network.</p>
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-800">{t("publicSpace.communityLabel")}</p>
+            <h1 className="mt-1 text-2xl font-bold text-slate-950 sm:text-3xl">{t("publicSpace.title")}</h1>
+            <p className="mt-1 text-sm text-slate-600">{t("publicSpace.description")}</p>
           </div>
           <div className="flex items-center gap-3">
             <Link
               href="/friends"
               className="inline-flex h-10 items-center gap-2 border border-emerald-900/20 bg-white px-3.5 rounded text-sm font-semibold text-emerald-950 hover:bg-emerald-50"
             >
-              <UsersRound size={16} /> Manage Friends ({user?.friendCount || 0})
+              <UsersRound size={16} /> {t("publicSpace.manageFriends", { count: user?.friendCount || 0 })}
             </Link>
           </div>
         </div>
@@ -423,11 +425,11 @@ export default function PublicSpace() {
               <h2 className="mt-3 truncate font-semibold text-slate-900">{userName}</h2>
               <p className="text-xs text-slate-500">@{user?.username || "student"}</p>
               <div className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-600 flex justify-between">
-                <span>Friends:</span>
+                <span>{t("navbar.friends")}:</span>
                 <span className="font-bold text-emerald-800">{user?.friendCount || 0}</span>
               </div>
               <Link href="/profile" className="mt-4 block w-full text-center py-1.5 rounded border border-slate-200 text-xs font-semibold text-emerald-800 hover:bg-slate-50">
-                View profile
+                {t("navbar.profile")}
               </Link>
             </div>
           </section>
@@ -435,7 +437,7 @@ export default function PublicSpace() {
           {/* Hashtag Filters */}
           <nav className="mt-4 border border-slate-200 bg-white p-3 rounded-xl shadow-sm">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
-              <Hash size={13} className="text-emerald-700" /> Discover Topics
+              <Hash size={13} className="text-emerald-700" /> {t("publicSpace.discoverTopics")}
             </h3>
             <div className="flex flex-wrap gap-1.5">
               <button
@@ -444,7 +446,7 @@ export default function PublicSpace() {
                   tagFilter === null ? "bg-emerald-800 text-white font-semibold" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                 }`}
               >
-                All posts
+                {t("publicSpace.allPosts")}
               </button>
               {POPULAR_TAGS.map((tag) => (
                 <button
@@ -462,17 +464,17 @@ export default function PublicSpace() {
         </aside>
 
         {/* Center Feed */}
-        <section className="min-w-0" aria-label="Community feed">
+        <section className="min-w-0" aria-label={t("publicSpace.communityFeed")}>
           {/* Post Creation Box */}
           <div className="border border-slate-200 bg-white p-4 sm:p-5 rounded-xl shadow-sm">
             <div className="flex items-start gap-3">
               <Avatar name={userName} photo={userPhoto} />
               <textarea
-                aria-label="Write a post"
+                aria-label={t("publicSpace.writePostLabel")}
                 value={content}
                 onChange={(event) => setContent(event.target.value)}
                 maxLength={3000}
-                placeholder="Share a project update, question, or career milestone... (use #hashtags and @mentions)"
+                placeholder={t("publicSpace.writePost")}
                 className="min-h-[86px] min-w-0 flex-1 resize-y border border-slate-200 p-3 text-sm leading-6 text-slate-800 outline-none rounded-lg placeholder:text-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/10"
               />
             </div>
@@ -483,7 +485,7 @@ export default function PublicSpace() {
                 </span>
                 <button
                   type="button"
-                  aria-label="Remove attachment"
+                  aria-label={t("publicSpace.removeAttachment")}
                   onClick={() => setFile(null)}
                   className="grid h-7 w-7 shrink-0 place-items-center hover:bg-emerald-100 rounded"
                 >
@@ -494,19 +496,19 @@ export default function PublicSpace() {
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
               <div className="flex flex-wrap items-center gap-2">
                 <label className="inline-flex h-9 cursor-pointer items-center gap-2 px-2.5 text-xs font-semibold text-slate-600 rounded hover:bg-slate-50 hover:text-emerald-800">
-                  <ImagePlus size={16} className="text-emerald-700" /> Photo / Video
+                  <ImagePlus size={16} className="text-emerald-700" /> {t("publicSpace.photoVideo")}
                   <input type="file" accept="image/*,video/*" onChange={selectMedia} className="sr-only" />
                 </label>
                 <label className="flex h-9 items-center gap-1.5 px-2 text-xs text-slate-600">
                   <Globe2 size={15} className="text-slate-500" />
                   <select
-                    aria-label="Post audience"
+                    aria-label={t("publicSpace.postAudience")}
                     value={privacy}
                     onChange={(event) => setPrivacy(event.target.value as "public" | "friends")}
                     className="border-0 bg-transparent text-xs font-medium outline-none focus:ring-0"
                   >
-                    <option value="public">Public</option>
-                    <option value="friends">Friends only</option>
+                    <option value="public">{t("publicSpace.public")}</option>
+                    <option value="friends">{t("publicSpace.friendsOnly")}</option>
                   </select>
                 </label>
               </div>
@@ -518,7 +520,7 @@ export default function PublicSpace() {
                   disabled={posting || (!content.trim() && !file)}
                   className="inline-flex h-9 items-center gap-2 bg-emerald-800 px-4 text-xs font-semibold text-white rounded hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-45 shadow-sm"
                 >
-                  <Send size={14} /> {posting ? "Posting..." : "Post"}
+                  <Send size={14} /> {posting ? t("publicSpace.posting") : t("publicSpace.post")}
                 </button>
               </div>
             </div>
@@ -528,18 +530,18 @@ export default function PublicSpace() {
           {tagFilter && (
             <div className="my-3 flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-900">
               <span>
-                Filtering by hashtag: <b className="font-bold">#{tagFilter}</b>
+                {t("publicSpace.filteringByHashtag")}: <b className="font-bold">#{tagFilter}</b>
               </span>
               <button onClick={() => setTagFilter(null)} className="font-semibold underline hover:text-emerald-950">
-                Clear filter
+                {t("publicSpace.clearFilter")}
               </button>
             </div>
           )}
 
           {/* Feed Header */}
           <div className="mb-3 mt-6 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-950">Community Feed</h2>
-            <span className="text-xs text-slate-500">Friends first · Trending &amp; Recent</span>
+            <h2 className="text-lg font-bold text-slate-950">{t("publicSpace.communityFeed")}</h2>
+            <span className="text-xs text-slate-500">{t("publicSpace.feedSort")}</span>
           </div>
 
           {feedError && (
@@ -719,20 +721,20 @@ export default function PublicSpace() {
                       <span aria-hidden="true" className="text-base">
                         {liked ? "♥" : "♡"}
                       </span>{" "}
-                      Like
+                      {t("publicSpace.like")}
                     </button>
                     <button
                       onClick={() => void toggleComments(post)}
                       aria-expanded={Boolean(openComments[post._id])}
                       className="flex min-h-10 items-center justify-center gap-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 rounded sm:gap-2 sm:text-sm"
                     >
-                      <MessageCircle size={16} /> Comment
+                      <MessageCircle size={16} /> {t("publicSpace.comment")}
                     </button>
                     <button
                       onClick={() => void sharePost(post)}
                       className="flex min-h-10 items-center justify-center gap-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 rounded sm:gap-2 sm:text-sm"
                     >
-                      <Share2 size={16} /> Share
+                      <Share2 size={16} /> {t("publicSpace.share")}
                     </button>
                     <button
                       onClick={() => void toggleSave(post)}
@@ -741,7 +743,7 @@ export default function PublicSpace() {
                         saved ? "text-emerald-800" : "text-slate-600"
                       }`}
                     >
-                      <Bookmark size={16} fill={saved ? "currentColor" : "none"} /> Save
+                      <Bookmark size={16} fill={saved ? "currentColor" : "none"} /> {t("publicSpace.save")}
                     </button>
                   </div>
 
@@ -760,7 +762,7 @@ export default function PublicSpace() {
                             </div>
                           </div>
                         ))}
-                        {comments[post._id]?.length === 0 && <p className="text-xs text-slate-500">No comments yet. Start the conversation.</p>}
+                        {comments[post._id]?.length === 0 && <p className="text-xs text-slate-500">{t("publicSpace.noComments")}</p>}
                       </div>
                       <form
                         className="mt-4 flex items-center gap-2"
@@ -774,14 +776,14 @@ export default function PublicSpace() {
                           value={commentDrafts[post._id] || ""}
                           onChange={(event) => setCommentDrafts((current) => ({ ...current, [post._id]: event.target.value }))}
                           maxLength={1000}
-                          placeholder="Write a comment... (use #tags or @mentions)"
-                          aria-label="Write a comment"
+                          placeholder={t("publicSpace.writeComment")}
+                          aria-label={t("publicSpace.writeComment")}
                           className="h-10 min-w-0 flex-1 border border-slate-200 bg-white px-3 text-xs outline-none rounded-lg focus:border-emerald-700"
                         />
                         <button
                           type="submit"
                           disabled={!commentDrafts[post._id]?.trim() || sendingComment === post._id}
-                          aria-label="Send comment"
+                          aria-label={t("publicSpace.sendComment")}
                           className="grid h-10 w-10 shrink-0 place-items-center bg-emerald-800 text-white rounded-lg hover:bg-emerald-900 disabled:opacity-40"
                         >
                           <Send size={15} />

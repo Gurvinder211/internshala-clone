@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useTranslation } from "react-i18next";
+import { useTranslation } from "next-i18next/pages";
 import { useRouter } from "next/router";
 import { useDispatch, useSelector } from "react-redux";
 import { Globe, ShieldAlert, Check, Loader2, X, RefreshCw } from "lucide-react";
@@ -17,7 +17,7 @@ const LANGUAGES = [
 ];
 
 export default function LanguageSwitcher() {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation("common");
   const router = useRouter();
   const dispatch = useDispatch();
   const user = useSelector(selectuser);
@@ -60,7 +60,7 @@ export default function LanguageSwitcher() {
     localStorage.setItem("preferredLanguage", lang);
     void i18n.changeLanguage(lang);
     dispatch(setLanguage(lang));
-    toast.success(`Language switched to ${LANGUAGES.find((l) => l.code === lang)?.label || lang}`);
+    toast.success(t("language.changed", { language: LANGUAGES.find((l) => l.code === lang)?.label || lang }));
   };
 
   const handleSelect = async (lang: string) => {
@@ -69,7 +69,7 @@ export default function LanguageSwitcher() {
 
     if (lang === "fr") {
       if (!user) {
-        toast.info("Please sign in to verify your email before switching to French.");
+        toast.info(t("language.signInToVerifyFrench"));
         return;
       }
 
@@ -80,7 +80,7 @@ export default function LanguageSwitcher() {
         setOtpCode("");
         setOtpOpen(true);
       } catch (err: any) {
-        toast.error(err?.response?.data?.error || "Could not send verification code for French.");
+        toast.error(err?.response?.data?.error || t("language.sendVerificationFailed"));
       } finally {
         setSubmitting(false);
       }
@@ -96,7 +96,7 @@ export default function LanguageSwitcher() {
       await api.patch("/language", { language: lang });
       applyLocally(lang);
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || "Could not switch language. Please check your connection.");
+      toast.error(err?.response?.data?.error || t("language.switchFailed"));
     }
   };
 
@@ -104,7 +104,7 @@ export default function LanguageSwitcher() {
     e.preventDefault();
     setError("");
     if (!otpCode || otpCode.length < 6) {
-      setError("Please enter the 6-digit verification code.");
+      setError(t("language.enterCode"));
       return;
     }
 
@@ -115,7 +115,7 @@ export default function LanguageSwitcher() {
       setOtpOpen(false);
       setOtpCode("");
     } catch (err: any) {
-      setError(err?.response?.data?.error || "Invalid or expired verification code.");
+      setError(err?.response?.data?.error || t("language.invalidCode"));
     } finally {
       setSubmitting(false);
     }
@@ -128,9 +128,9 @@ export default function LanguageSwitcher() {
     try {
       const { data } = await api.post("/language/french/request-otp");
       setCooldown(data.cooldownSeconds || 60);
-      toast.info("New verification code sent to your email.");
+      toast.info(t("language.newCodeSent"));
     } catch (err: any) {
-      setError(err?.response?.data?.error || "Failed to resend code.");
+      setError(err?.response?.data?.error || t("language.resendFailed"));
     } finally {
       setResending(false);
     }
@@ -145,7 +145,7 @@ export default function LanguageSwitcher() {
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm transition hover:border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-700/20"
-        aria-label="Change language"
+        aria-label={t("language.change")}
       >
         <Globe size={14} className="text-emerald-700" />
         <span className="mr-0.5">{currentLang.flag}</span>
@@ -155,7 +155,7 @@ export default function LanguageSwitcher() {
       {isOpen && (
         <div className="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-2xl border border-gray-100 bg-white p-1.5 shadow-xl ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-100">
           <div className="px-2.5 py-1.5 border-b border-gray-100 text-[10px] font-bold uppercase tracking-wider text-gray-400">
-            Select Language
+            {t("language.selectLanguage")}
           </div>
           <div className="py-1">
             {LANGUAGES.map((lang) => {
@@ -191,7 +191,7 @@ export default function LanguageSwitcher() {
                 setOtpCode("");
               }}
               className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-              aria-label="Close"
+              aria-label={t("language.close")}
             >
               <X size={18} />
             </button>
@@ -200,15 +200,15 @@ export default function LanguageSwitcher() {
               <ShieldAlert size={24} />
             </div>
 
-            <h3 className="text-xl font-bold text-slate-900">Security Verification</h3>
+            <h3 className="text-xl font-bold text-slate-900">{t("language.securityVerification")}</h3>
             <p className="mt-2 text-xs leading-5 text-slate-600">
-              Switching platform language to <b>French (Français)</b> requires One-Time Password verification for account security. An OTP was sent to <b>{user?.email}</b>.
+              {t("language.switchingToFrench", { email: user?.email })}
             </p>
 
             <form onSubmit={handleVerifyFrench} className="mt-5 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  6-Digit Verification Code
+                  {t("auth.verificationCode")}
                 </label>
                 <input
                   type="text"
@@ -233,7 +233,7 @@ export default function LanguageSwitcher() {
                 disabled={submitting || otpCode.length < 6}
                 className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-800 text-sm font-semibold text-white transition hover:bg-emerald-900 disabled:opacity-50"
               >
-                {submitting ? <Loader2 size={16} className="animate-spin" /> : "Verify & Apply Language"}
+                {submitting ? <Loader2 size={16} className="animate-spin" /> : t("language.apply")}
               </button>
 
               <div className="flex items-center justify-between pt-2 text-xs text-slate-500">
@@ -244,7 +244,7 @@ export default function LanguageSwitcher() {
                   className="inline-flex items-center gap-1 font-semibold text-emerald-800 hover:underline disabled:text-slate-400"
                 >
                   <RefreshCw size={13} className={resending ? "animate-spin" : ""} />
-                  {cooldown > 0 ? `Resend code in ${cooldown}s` : "Resend code"}
+                  {cooldown > 0 ? t("otp.resendIn", { seconds: cooldown }) : t("auth.resendCode")}
                 </button>
                 <button
                   type="button"
@@ -254,7 +254,7 @@ export default function LanguageSwitcher() {
                   }}
                   className="hover:underline text-slate-600"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
               </div>
             </form>

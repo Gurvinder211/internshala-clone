@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Monitor, Smartphone, Tablet, KeyRound, Globe, Shield, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { toast } from "react-toastify";
 import api from "@/lib/api";
+import { useTranslation } from "next-i18next/pages";
 
 const STATUS: Record<string, { text: string; tone: string }> = {
   SUCCESS: { text: "Signed in", tone: "bg-green-100 text-green-700" },
@@ -30,6 +31,7 @@ const DeviceIcon = ({ type }: { type?: string }) =>
   type === "mobile" ? <Smartphone className="h-5 w-5" /> : type === "tablet" ? <Tablet className="h-5 w-5" /> : <Monitor className="h-5 w-5" />;
 
 export default function LoginSecurity() {
+  const { t } = useTranslation("common");
   const [sessions, setSessions] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [langHistory, setLangHistory] = useState<any[]>([]);
@@ -62,20 +64,22 @@ export default function LoginSecurity() {
   const signOutOne = async (id: string) => {
     try {
       await api.delete(`/auth/sessions/${id}`);
-      toast.success("Device signed out");
+      toast.success(t("security.deviceSignedOut"));
       void load();
     } catch {
-      toast.error("Could not sign that device out");
+      toast.error(t("security.signOutFailed"));
     }
   };
 
   const signOutOthers = async () => {
     try {
       const { data } = await api.post("/auth/sessions/revoke-others");
-      toast.success(data.revoked ? `Signed out ${data.revoked} other device(s)` : "No other devices were signed in");
+      toast.success(data.revoked
+        ? t("security.signedOutOtherDevices", { count: data.revoked })
+        : t("security.noOtherDevices"));
       void load();
     } catch {
-      toast.error("Could not sign out other devices");
+      toast.error(t("security.signOutFailed"));
     }
   };
 
@@ -86,11 +90,11 @@ export default function LoginSecurity() {
         <div className="flex items-center justify-between border-b pb-3">
           <div className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-emerald-700" />
-            <h2 className="font-semibold text-gray-900">Active Sessions</h2>
+            <h2 className="font-semibold text-gray-900">{t("security.activeSessions")}</h2>
           </div>
           {sessions.length > 1 && (
             <button onClick={signOutOthers} className="text-xs font-semibold text-red-600 hover:underline">
-              Sign out other devices ({sessions.length - 1})
+              {t("security.signOutOtherDevicesButton", { count: sessions.length - 1 })}
             </button>
           )}
         </div>
@@ -104,7 +108,7 @@ export default function LoginSecurity() {
                 <div>
                   <p className="text-sm font-semibold text-gray-900">
                     {s.browser} {String(s.browserVersion).split(".")[0]} on {s.os}
-                    {s.current && <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800">Current Device</span>}
+                    {s.current && <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800">{t("security.currentDevice")}</span>}
                   </p>
                   <p className="text-xs text-gray-500">
                     {s.location || "Unknown"} · IP: {s.ip} · Last seen: {when(s.lastSeenAt)}
@@ -116,7 +120,7 @@ export default function LoginSecurity() {
                   onClick={() => signOutOne(s.id)}
                   className="rounded px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 border border-red-200"
                 >
-                  Sign out
+                  {t("navbar.logout")}
                 </button>
               )}
             </li>
@@ -127,22 +131,22 @@ export default function LoginSecurity() {
       {/* Login History */}
       <section className="border rounded-xl p-5 bg-white shadow-xs">
         <div className="flex items-center justify-between border-b pb-3">
-          <h2 className="font-semibold text-gray-900">Login Activity History</h2>
-          <span className="text-xs text-gray-400">Past 30 events</span>
+          <h2 className="font-semibold text-gray-900">{t("security.loginActivity")}</h2>
+          <span className="text-xs text-gray-400">{t("security.pastEvents")}</span>
         </div>
         {historyError ? (
-          <p className="mt-3 text-xs text-red-600">Could not load login history. Refresh the page and try again.</p>
+          <p className="mt-3 text-xs text-red-600">{t("security.couldNotLoadLoginHistory")}</p>
         ) : history.length === 0 ? (
-          <p className="mt-3 text-xs text-gray-500">No login activity recorded yet.</p>
+          <p className="mt-3 text-xs text-gray-500">{t("security.noLoginActivity")}</p>
         ) : (
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-left text-gray-500 border-b">
-                  <th className="pb-2 font-semibold">Timestamp (IST)</th>
-                  <th className="pb-2 font-semibold">Status / Event</th>
-                  <th className="pb-2 font-semibold">Environment</th>
-                  <th className="pb-2 font-semibold">IP &amp; Location</th>
+                  <th className="pb-2 font-semibold">{t("security.timestamp")}</th>
+                  <th className="pb-2 font-semibold">{t("security.statusEvent")}</th>
+                  <th className="pb-2 font-semibold">{t("security.environment")}</th>
+                  <th className="pb-2 font-semibold">{t("security.ipLocation")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -153,8 +157,8 @@ export default function LoginSecurity() {
                       <td className="py-2.5 pr-3 whitespace-nowrap text-gray-600 font-mono">{when(h.createdAt)}</td>
                       <td className="py-2.5 pr-3">
                         <span className={`rounded px-2 py-0.5 text-[11px] font-medium ${st.tone}`}>{st.text}</span>
-                        {h.newDevice && <span className="ml-1 rounded bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-700 font-semibold">New Device</span>}
-                        {h.newIp && <span className="ml-1 rounded bg-purple-100 px-1.5 py-0.5 text-[10px] text-purple-700 font-semibold">New IP</span>}
+                        {h.newDevice && <span className="ml-1 rounded bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-700 font-semibold">{t("security.newDevice")}</span>}
+                        {h.newIp && <span className="ml-1 rounded bg-purple-100 px-1.5 py-0.5 text-[10px] text-purple-700 font-semibold">{t("security.newIp")}</span>}
                       </td>
                       <td className="py-2.5 pr-3 text-gray-700">
                         {h.browser} {String(h.browserVersion).split(".")[0]}, {h.os}
@@ -162,7 +166,7 @@ export default function LoginSecurity() {
                       </td>
                       <td className="py-2.5 text-gray-700">
                         {h.ip}
-                        <span className="block text-[11px] text-gray-400">{h.location || "Unknown"}</span>
+                        <span className="block text-[11px] text-gray-400">{h.location || t("security.unknown")}</span>
                       </td>
                     </tr>
                   );
@@ -177,19 +181,19 @@ export default function LoginSecurity() {
       <section className="border rounded-xl p-5 bg-white shadow-xs">
         <div className="flex items-center gap-2 border-b pb-3">
           <Globe className="h-5 w-5 text-emerald-700" />
-          <h2 className="font-semibold text-gray-900">Language Audit History</h2>
+          <h2 className="font-semibold text-gray-900">{t("security.languageAudit")}</h2>
         </div>
         {langHistory.length === 0 ? (
-          <p className="mt-3 text-xs text-gray-500">No language changes recorded yet.</p>
+          <p className="mt-3 text-xs text-gray-500">{t("security.noLanguageChanges")}</p>
         ) : (
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-left text-gray-500 border-b">
-                  <th className="pb-2 font-semibold">Date &amp; Time (IST)</th>
-                  <th className="pb-2 font-semibold">Language Transition</th>
-                  <th className="pb-2 font-semibold">OTP Verification</th>
-                  <th className="pb-2 font-semibold">Device &amp; IP</th>
+                  <th className="pb-2 font-semibold">{t("security.dateTime")}</th>
+                  <th className="pb-2 font-semibold">{t("security.languageTransition")}</th>
+                  <th className="pb-2 font-semibold">{t("security.otpVerification")}</th>
+                  <th className="pb-2 font-semibold">{t("security.deviceIp")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -203,19 +207,19 @@ export default function LoginSecurity() {
                       {l.otpRequired ? (
                         l.otpVerified ? (
                           <span className="inline-flex items-center gap-1 rounded bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800">
-                            <CheckCircle2 size={12} /> Verified (French)
+                            <CheckCircle2 size={12} /> {t("security.verified")}
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
-                            <AlertTriangle size={12} /> Pending OTP
+                            <AlertTriangle size={12} /> {t("security.pendingOtp")}
                           </span>
                         )
                       ) : (
-                        <span className="text-gray-400 text-[11px]">Not required</span>
+                        <span className="text-gray-400 text-[11px]">{t("security.notRequired")}</span>
                       )}
                     </td>
                     <td className="py-2.5 text-gray-700">
-                      {l.browser || "Browser"} on {l.os || "OS"}
+                      {l.browser || t("security.browser")} on {l.os || t("security.operatingSystem")}
                       <span className="block text-[11px] text-gray-400 font-mono">{l.ip}</span>
                     </td>
                   </tr>
@@ -230,19 +234,19 @@ export default function LoginSecurity() {
       <section className="border rounded-xl p-5 bg-white shadow-xs">
         <div className="flex items-center gap-2 border-b pb-3">
           <KeyRound className="h-5 w-5 text-emerald-700" />
-          <h2 className="font-semibold text-gray-900">Password Reset History</h2>
+          <h2 className="font-semibold text-gray-900">{t("security.passwordResetHistory")}</h2>
         </div>
         {resetHistory.length === 0 ? (
-          <p className="mt-3 text-xs text-gray-500">No password reset requests recorded yet.</p>
+          <p className="mt-3 text-xs text-gray-500">{t("security.noPasswordResets")}</p>
         ) : (
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-left text-gray-500 border-b">
-                  <th className="pb-2 font-semibold">Requested (IST)</th>
-                  <th className="pb-2 font-semibold">Method</th>
-                  <th className="pb-2 font-semibold">Result</th>
-                  <th className="pb-2 font-semibold">Device &amp; IP</th>
+                  <th className="pb-2 font-semibold">{t("security.requested")}</th>
+                  <th className="pb-2 font-semibold">{t("security.method")}</th>
+                  <th className="pb-2 font-semibold">{t("security.result")}</th>
+                  <th className="pb-2 font-semibold">{t("security.deviceIp")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -250,25 +254,25 @@ export default function LoginSecurity() {
                   <tr key={r._id} className="align-top hover:bg-gray-50/50">
                     <td className="py-2.5 pr-3 whitespace-nowrap text-gray-600 font-mono">{when(r.requestedAt || r.createdAt)}</td>
                     <td className="py-2.5 pr-3 uppercase font-semibold text-gray-700">
-                      {r.method === "sms" ? "Mobile SMS" : "Email"}
+                      {r.method === "sms" ? t("security.mobileSms") : t("auth.email")}
                     </td>
                     <td className="py-2.5 pr-3">
                       {r.deliveryFailed ? (
                         <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700">
-                          <XCircle size={12} /> Delivery failed
+                          <XCircle size={12} /> {t("security.deliveryFailed")}
                         </span>
                       ) : r.verified ? (
                         <span className="inline-flex items-center gap-1 rounded bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800">
-                          <CheckCircle2 size={12} /> Password Reset Verified
+                          <CheckCircle2 size={12} /> {t("security.passwordResetVerified")}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
-                          <AlertTriangle size={12} /> Code sent, not completed
+                          <AlertTriangle size={12} /> {t("security.codeSentPending")}
                         </span>
                       )}
                     </td>
                     <td className="py-2.5 text-gray-700">
-                      {r.browser || "Browser"} on {r.os || "OS"}
+                      {r.browser || t("security.browser")} on {r.os || t("security.operatingSystem")}
                       <span className="block text-[11px] text-gray-400 font-mono">{r.ip}</span>
                     </td>
                   </tr>

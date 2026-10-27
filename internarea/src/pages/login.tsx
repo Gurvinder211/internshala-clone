@@ -8,8 +8,10 @@ import { ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import { login as loginAction } from "@/Feature/Userslice";
 import LoginOtpModal from "@/Components/LoginOtpModal";
 import { startSession, clearLocalSession } from "@/lib/session";
+import { useTranslation } from "next-i18next/pages";
 
 export default function Login() {
+  const { t } = useTranslation("common");
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -50,11 +52,11 @@ export default function Login() {
       if (axios.isAxiosError(err)) {
         setError(
           err.code === "ECONNABORTED" || err.code === "ETIMEDOUT"
-            ? "Sign-in timed out while waiting for the backend. Please try again."
-            : err.response?.data?.error || "Login failed. Please check your details."
+            ? t("auth.signInTimeout")
+            : err.response?.data?.error || t("auth.loginFailedDetails")
         );
       } else {
-        setError("Login failed. Please try again.");
+        setError(t("auth.loginTryAgain"));
       }
     } finally {
       setIsSubmitting(false);
@@ -68,7 +70,7 @@ export default function Login() {
             <div className="relative flex h-full flex-col justify-between gap-16">
               <div>
                 <h1 className="max-w-md text-4xl font-semibold leading-[1.05] tracking-[-0.04em] sm:text-5xl">
-                  Pick up where your career journey left off.
+                  {t("auth.careerJourney")}
                 </h1>
               </div>
             </div>
@@ -77,10 +79,10 @@ export default function Login() {
             <div className="mx-auto max-w-md">
               <form onSubmit={handleSubmit} className="space-y-5">
                 <label className="block">
-                  <span className="mb-2 block text-sm font-semibold text-[#304139]">Email address</span>
+                  <span className="mb-2 block text-sm font-semibold text-[#304139]">{t("auth.emailAddress")}</span>
                   <input
                     className="h-12 w-full rounded-xl border border-[#d9e0d9] bg-[#fbfcfa] px-4 text-sm text-[#1c2b25] outline-none transition placeholder:text-[#9aa79e] focus:border-[#557d5e] focus:ring-4 focus:ring-[#557d5e]/10"
-                    placeholder="alex@example.com"
+                    placeholder={t("auth.emailPlaceholder")}
                     type="email"
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -90,20 +92,20 @@ export default function Login() {
                 </label>
                 <label className="block">
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="text-sm font-semibold text-[#304139]">Password</span>
-                    <Link href="/forgot-password" className="text-xs font-semibold text-[#557d5e] hover:text-[#173b35]">Forgot password?</Link>
+                    <span className="text-sm font-semibold text-[#304139]">{t("auth.password")}</span>
+                    <Link href="/forgot-password" className="text-xs font-semibold text-[#557d5e] hover:text-[#173b35]">{t("auth.forgotPassword")}</Link>
                   </div>
                   <div className="relative">
                     <input
                       className="h-12 w-full rounded-xl border border-[#d9e0d9] bg-[#fbfcfa] px-4 pr-12 text-sm text-[#1c2b25] outline-none transition placeholder:text-[#9aa79e] focus:border-[#557d5e] focus:ring-4 focus:ring-[#557d5e]/10"
-                      placeholder="Enter your password"
+                      placeholder={t("auth.enterPassword")}
                       type={showPassword ? "text" : "password"}
                       value={form.password}
                       onChange={(e) => setForm({ ...form, password: e.target.value })}
                       autoComplete="current-password"
                       required
                     />
-                    <button type="button" aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-[#738078] hover:bg-[#edf2ec]">
+                    <button type="button" aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")} onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-[#738078] hover:bg-[#edf2ec]">
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
@@ -114,11 +116,11 @@ export default function Login() {
                   disabled={isSubmitting}
                   className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#173b35] px-5 text-sm font-semibold text-white transition hover:bg-[#28584e] focus:outline-none focus:ring-4 focus:ring-[#557d5e]/20 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <>Sign in <ArrowRight size={18} /></>}
+                  {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <>{t("auth.signIn")} <ArrowRight size={18} /></>}
                 </button>
               </form>
               <p className="mt-6 text-center text-sm text-[#6a756f]">
-                New to InternArea? <Link href="/register" className="font-semibold text-[#557d5e] hover:text-[#173b35]">Create an account</Link>
+                {t("auth.newToInternArea")} <Link href="/register" className="font-semibold text-[#557d5e] hover:text-[#173b35]">{t("auth.createAccount")}</Link>
               </p>
             </div>
           </section>

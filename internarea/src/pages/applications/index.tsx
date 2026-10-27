@@ -11,6 +11,7 @@ import {
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
+import { useTranslation } from "next-i18next/pages";
 // const Applications = [
 //   {
 //     _id: "1",
@@ -48,6 +49,7 @@ const getStatusColor = (status: any) => {
   }
 };
 const index = () => {
+  const { t } = useTranslation("common");
   const [searchTerm, setsearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
   const [data, setdata] = useState<any>([]);
@@ -81,10 +83,10 @@ const index = () => {
         app._id === id ? res.data.data : app
       );
       setdata(updateappliacrtion);
-      toast.success("updated successfully");
+      toast.success(t("applications.updated"));
     } catch (error) {
       console.log(error);
-      toast.error("error updating");
+      toast.error(t("applications.updateFailed"));
     }
   };
   return (
@@ -93,9 +95,9 @@ const index = () => {
         <div className="bg-white rounded-lg shadow-sm">
           {/* Header */}
           <div className="border-b border-gray-200 px-6 py-4">
-            <h1 className="text-2xl font-bold text-gray-900">Applications</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t("applications.title")}</h1>
             <p className="mt-1 text-sm text-gray-500">
-              Manage and review all applications
+              {t("applications.manageAndReview")}
             </p>
           </div>
 
@@ -108,7 +110,7 @@ const index = () => {
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setsearchTerm(e.target.value)}
-                    placeholder="Search by company, category, or applicant..."
+                    placeholder={t("applications.searchPlaceholder")}
                     className="text-black w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <Mail className="absolute top-3 left-3 text-gray-400" />

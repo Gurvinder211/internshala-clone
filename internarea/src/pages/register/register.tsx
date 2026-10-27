@@ -8,8 +8,10 @@ import { signInWithPopup, signInWithRedirect } from "firebase/auth";
 import { auth, isFirebaseConfigured, provider } from "@/firebase/firebase";
 import { startSession } from "@/lib/session";
 import LoginOtpModal from "@/Components/LoginOtpModal";
+import { useTranslation } from "next-i18next/pages";
 
 export default function Register() {
+  const { t } = useTranslation("common");
   const [form, setForm] = useState({ name: "", email: "", phone: "", password: "" });
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -68,7 +70,7 @@ export default function Register() {
       return;
     }
     if (form.password.length < 8 || !/[A-Z]/.test(form.password) || !/[a-z]/.test(form.password) || !/[0-9]/.test(form.password)) {
-      setError("Use at least 8 characters with uppercase, lowercase, and a number.");
+      setError(t("auth.passwordRequirement"));
       return;
     }
 
@@ -113,19 +115,19 @@ export default function Register() {
           <div className="relative flex h-full flex-col justify-between gap-16">
             <div>
               <p className="mb-8 text-sm font-semibold uppercase tracking-[0.2em] text-[#d9ed83]">InternArea</p>
-              <p className="mb-5 max-w-sm text-sm font-medium uppercase tracking-[0.18em] text-white/60">A better start to your next chapter</p>
+              <p className="mb-5 max-w-sm text-sm font-medium uppercase tracking-[0.18em] text-white/60">{t("auth.betterStart")}</p>
               <h1 className="max-w-md text-4xl font-semibold leading-[1.05] tracking-[-0.04em] sm:text-5xl">
-                Build a career that feels like yours.
+                {t("auth.buildYourCareer")}
               </h1>
               <p className="mt-6 max-w-md text-base leading-7 text-white/70">
-                Discover internships, find your next opportunity, and keep every step of your search in one place.
+                {t("auth.discoverOpportunities")}
               </p>
             </div>
             <div className="space-y-4 text-sm text-white/80">
               {[
-                "Personalized opportunities",
-                "One profile for every application",
-                "A community built for ambitious people",
+                t("auth.personalizedOpportunities"),
+                t("auth.oneProfileForApplications"),
+                t("auth.ambitiousCommunity"),
               ].map((item) => (
                 <div className="flex items-center gap-3" key={item}>
                   <span className="grid h-6 w-6 place-items-center rounded-full bg-[#d9ed83] text-[#173b35]">
@@ -141,9 +143,9 @@ export default function Register() {
         <section className="px-7 py-10 sm:px-12 lg:px-16 lg:py-14">
           <div className="mx-auto max-w-md">
             <div className="mb-8">
-              <p className="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-[#6a7f72]">Create your account</p>
-              <h2 className="text-3xl font-semibold tracking-[-0.04em] text-[#1c2b25]">Your next opportunity starts here.</h2>
-              <p className="mt-3 text-sm leading-6 text-[#6a756f]">Join a focused community of students and early-career talent.</p>
+              <p className="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-[#6a7f72]">{t("auth.createYourAccount")}</p>
+              <h2 className="text-3xl font-semibold tracking-[-0.04em] text-[#1c2b25]">{t("auth.nextOpportunity")}</h2>
+              <p className="mt-3 text-sm leading-6 text-[#6a756f]">{t("auth.joinCommunity")}</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -156,20 +158,20 @@ export default function Register() {
                 className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-[#d9e0d9] bg-white px-5 text-sm font-semibold text-[#24352c] transition hover:bg-[#f7f9f6] focus:outline-none focus:ring-4 focus:ring-[#557d5e]/10 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isGoogleSubmitting ? <Loader2 size={18} className="animate-spin" /> : <span aria-hidden="true" className="text-base font-bold text-[#4285F4]">G</span>}
-                Continue with Google
+                {t("auth.continueWithGoogle")}
               </button>
 
               <div className="flex items-center gap-3" aria-hidden="true">
                 <span className="h-px flex-1 bg-[#e5eae4]" />
-                <span className="text-xs text-[#87928a]">or use your email</span>
+                <span className="text-xs text-[#87928a]">{t("auth.orUseEmail")}</span>
                 <span className="h-px flex-1 bg-[#e5eae4]" />
               </div>
 
               <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-[#304139]">Full name</span>
+                <span className="mb-2 block text-sm font-semibold text-[#304139]">{t("auth.fullName")}</span>
                 <input
                   className="h-12 w-full rounded-xl border border-[#d9e0d9] bg-[#fbfcfa] px-4 text-sm text-[#1c2b25] outline-none transition placeholder:text-[#9aa79e] focus:border-[#557d5e] focus:ring-4 focus:ring-[#557d5e]/10"
-                  placeholder="Alex Morgan"
+                  placeholder={t("auth.namePlaceholder")}
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   autoComplete="name"
@@ -178,10 +180,10 @@ export default function Register() {
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-[#304139]">Email address</span>
+                <span className="mb-2 block text-sm font-semibold text-[#304139]">{t("auth.emailAddress")}</span>
                 <input
                   className="h-12 w-full rounded-xl border border-[#d9e0d9] bg-[#fbfcfa] px-4 text-sm text-[#1c2b25] outline-none transition placeholder:text-[#9aa79e] focus:border-[#557d5e] focus:ring-4 focus:ring-[#557d5e]/10"
-                  placeholder="alex@example.com"
+                  placeholder={t("auth.emailPlaceholder")}
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -192,7 +194,7 @@ export default function Register() {
 
               <label className="block">
                 <span className="mb-2 block text-sm font-semibold text-[#304139]">
-                  Mobile number <span className="font-normal text-[#738078]">(optional, for password recovery)</span>
+                  {t("auth.mobileNumber")} <span className="font-normal text-[#738078]">{t("auth.optionalPasswordRecovery")}</span>
                 </span>
                 <input
                   className="h-12 w-full rounded-xl border border-[#d9e0d9] bg-[#fbfcfa] px-4 text-sm text-[#1c2b25] outline-none transition placeholder:text-[#9aa79e] focus:border-[#557d5e] focus:ring-4 focus:ring-[#557d5e]/10"
@@ -202,11 +204,11 @@ export default function Register() {
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-[#304139]">Password</span>
+                <span className="mb-2 block text-sm font-semibold text-[#304139]">{t("auth.password")}</span>
                 <div className="relative">
                   <input
                     className="h-12 w-full rounded-xl border border-[#d9e0d9] bg-[#fbfcfa] px-4 pr-12 text-sm text-[#1c2b25] outline-none transition placeholder:text-[#9aa79e] focus:border-[#557d5e] focus:ring-4 focus:ring-[#557d5e]/10"
-                    placeholder="Create a strong password"
+                    placeholder={t("auth.createStrongPassword")}
                     type={showPassword ? "text" : "password"}
                     value={form.password}
                     onChange={(e) => setForm({ ...form, password: e.target.value })}
@@ -215,14 +217,14 @@ export default function Register() {
                   />
                   <button
                     type="button"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-[#738078] transition hover:bg-[#edf2ec] hover:text-[#304139]"
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                <span className="mt-2 block text-xs text-[#7d8982]">At least 8 characters, including uppercase, lowercase, and a number.</span>
+                <span className="mt-2 block text-xs text-[#7d8982]">{t("auth.passwordRequirement")}</span>
               </label>
 
               <button
@@ -230,13 +232,13 @@ export default function Register() {
                 disabled={isSubmitting || isGoogleSubmitting}
                 className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#173b35] px-5 text-sm font-semibold text-white transition hover:bg-[#28584e] focus:outline-none focus:ring-4 focus:ring-[#557d5e]/20 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <>Create account <ArrowRight size={18} /></>}
+                {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <>{t("auth.createAccount")} <ArrowRight size={18} /></>}
               </button>
             </form>
 
             <div className="mt-7 flex items-center justify-center gap-2 text-xs text-[#7d8982]">
               <ShieldCheck size={16} className="text-[#557d5e]" />
-              Your information is kept secure.
+              {t("auth.informationSecure")}
             </div>
           </div>
         </section>

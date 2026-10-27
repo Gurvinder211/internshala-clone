@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { resendSessionOtp, verifySessionOtp } from "@/lib/session";
+import { useTranslation } from "next-i18next/pages";
 
 export default function LoginOtpModal({ maskedEmail, deliveryMode = "email", onVerified, onCancel }: {
   maskedEmail: string;
@@ -8,6 +9,7 @@ export default function LoginOtpModal({ maskedEmail, deliveryMode = "email", onV
   onVerified: (user: any) => void;
   onCancel: (message?: string) => void;
 }) {
+  const { t } = useTranslation("common");
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -33,7 +35,7 @@ export default function LoginOtpModal({ maskedEmail, deliveryMode = "email", onV
         onCancel(body.error || "Please sign in again.");
         return;
       }
-      setError(body?.error || "Could not verify the code. Check your connection and try again.");
+      setError(body?.error || t("otp.verifyCodeError"));
     } finally {
       setBusy(false);
     }
@@ -45,39 +47,39 @@ export default function LoginOtpModal({ maskedEmail, deliveryMode = "email", onV
       const data = await resendSessionOtp();
       setCooldown(data.cooldownSeconds || 60);
       if (data.deliveryMode === "console") {
-        setError("Email delivery is not configured. The new code was printed in the backend terminal.");
+        setError(t("otp.emailNotConfigured"));
       }
     } catch (err: any) {
-      setError(err?.response?.data?.error || "Could not resend the code");
+      setError(err?.response?.data?.error || t("otp.resendFailed"));
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
       <form onSubmit={submit} className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-        <h2 className="text-lg font-semibold text-gray-900">Verify it's you</h2>
+        <h2 className="text-lg font-semibold text-gray-900">{t("auth.verifyIdentity")}</h2>
         <p className="mt-1 text-sm text-gray-600">
           {deliveryMode === "console"
-            ? "Email delivery is not configured. In development, the 6-digit code was printed in the backend terminal."
-            : `A 6-digit code was sent to ${maskedEmail}. Check your inbox and spam folder, then enter it to finish signing in.`}
+            ? t("otp.emailNotConfiguredDevelopment")
+            : t("otp.codeSent", { email: maskedEmail })}
         </p>
         <input
           autoFocus inputMode="numeric" autoComplete="one-time-code" maxLength={6}
           value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-          placeholder="000000" aria-label="Verification code"
+          placeholder="000000" aria-label={t("auth.verificationCode")}
           className="mt-4 h-12 w-full rounded-xl border border-gray-300 px-4 text-center text-xl tracking-[0.4em] outline-none focus:border-[#557d5e] focus:ring-4 focus:ring-[#557d5e]/10"
         />
         {error && <p role="alert" className="mt-3 text-sm text-red-600">{error}</p>}
         <button type="submit" disabled={busy || code.length < 6}
           className="mt-4 flex h-11 w-full items-center justify-center rounded-xl bg-[#173b35] text-sm font-semibold text-white disabled:opacity-50">
-          {busy ? <Loader2 size={18} className="animate-spin" /> : "Verify and sign in"}
+          {busy ? <Loader2 size={18} className="animate-spin" /> : t("auth.verifyAndSignIn")}
         </button>
         <div className="mt-3 flex items-center justify-between text-sm">
           <button type="button" onClick={resend} disabled={cooldown > 0}
             className="text-[#557d5e] disabled:text-gray-400">
-            {cooldown > 0 ? `Resend code in ${cooldown}s` : "Resend code"}
+            {cooldown > 0 ? t("otp.resendIn", { seconds: cooldown }) : t("auth.resendCode")}
           </button>
-          <button type="button" onClick={() => onCancel()} className="text-gray-500 hover:text-gray-800">Cancel</button>
+          <button type="button" onClick={() => onCancel()} className="text-gray-500 hover:text-gray-800">{t("common.cancel")}</button>
         </div>
       </form>
     </div>

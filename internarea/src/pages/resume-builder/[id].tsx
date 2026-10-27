@@ -7,6 +7,7 @@ import { ArrowLeft, Check, Download, Eye, Plus, Save, Trash2 } from "lucide-reac
 import { toast } from "react-toastify";
 import api from "@/lib/api";
 import { downloadResume } from "@/lib/downloadResume";
+import { useTranslation } from "next-i18next/pages";
 
 const BLANK = {
   title: "My resume", template: "classic", themeColor: "#126b59", fontFamily: "Helvetica",
@@ -85,6 +86,7 @@ function Field({ label, value, onChange, placeholder, multiline = false, type = 
 }
 
 export default function ResumeBuilder() {
+  const { t } = useTranslation("common");
   const router = useRouter();
   const { id } = router.query;
   const [resume, setResume] = useState<any>(BLANK);
@@ -99,7 +101,7 @@ export default function ResumeBuilder() {
     setLoading(true);
     api.get(`/resume/${id}`)
       .then((response) => setResume({ ...BLANK, ...response.data.resume }))
-      .catch((error) => toast.error(error?.response?.data?.error || "Could not load this resume"))
+      .catch((error) => toast.error(error?.response?.data?.error || t("resume.couldNotLoad")))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -135,15 +137,15 @@ export default function ResumeBuilder() {
         const { data } = await api.post("/resume", resume);
         setResume({ ...BLANK, ...data.resume });
         await router.replace(`/resume-builder/${data.resume._id}`);
-        toast.success("Draft saved");
+        toast.success(t("resume.draftSaved"));
         return data.resume._id;
       }
       const { data } = await api.patch(`/resume/${id}`, resume);
       setResume((current: any) => ({ ...current, ...data.resume }));
-      toast.success("Draft saved");
+      toast.success(t("resume.draftSaved"));
       return String(id);
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || "Could not save");
+      toast.error(error?.response?.data?.error || t("resume.couldNotSave"));
       return null;
     } finally {
       setSaving(false);
@@ -158,7 +160,7 @@ export default function ResumeBuilder() {
       setGenerationId(data.generationId);
       setGenState("otp-sent");
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || "Could not send code");
+      toast.error(error?.response?.data?.error || t("resume.couldNotSendCode"));
     }
   };
 
@@ -172,18 +174,18 @@ export default function ResumeBuilder() {
         handler: async (response: any) => {
           try {
             const result = await api.post(`/resume/${id}/generate/verify-payment`, { generationId, ...response });
-            toast.success("Resume generated");
+            toast.success(t("resume.generated"));
             setResume((current: any) => ({ ...current, status: "generated", pdfUrl: result.data.pdfUrl }));
             setGenState("idle");
           } catch (error: any) {
-            toast.error(error?.response?.data?.error || "Payment needs verification. Please try again.");
+            toast.error(error?.response?.data?.error || t("resume.paymentNeedsVerification"));
           }
         },
         modal: { ondismiss: () => api.post(`/resume/${id}/generate/failed`, { generationId, cancelled: true }) },
       });
       rzp.open();
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || "Verification failed");
+      toast.error(error?.response?.data?.error || t("resume.verificationFailed"));
     }
   };
 
@@ -196,13 +198,13 @@ export default function ResumeBuilder() {
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
-            <Link href="/profile" aria-label="Back to profile" title="Back to profile"
+            <Link href="/profile" aria-label={t("resume.backToProfile")} title={t("resume.backToProfile")}
               className="grid h-9 w-9 shrink-0 place-items-center rounded border border-slate-200 text-slate-600 hover:bg-slate-50">
               <ArrowLeft size={17} />
             </Link>
             <div className="min-w-0">
-              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-emerald-800">Resume studio</p>
-              <input aria-label="Resume title" value={resume.title || ""} placeholder="Untitled resume"
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-emerald-800">{t("resume.resumeStudio")}</p>
+              <input aria-label={t("resume.resumeTitle")} value={resume.title || ""} placeholder={t("resume.untitledResume")}
                 onChange={(event) => setResume({ ...resume, title: event.target.value })}
                 className="w-full max-w-[320px] truncate border-0 bg-transparent p-0 text-lg font-semibold outline-none focus:ring-0" />
             </div>
@@ -210,12 +212,12 @@ export default function ResumeBuilder() {
           <div className="flex items-center gap-2">
             <span className="hidden items-center gap-1.5 text-xs text-slate-500 sm:flex">
               <span className="h-2 w-2 rounded-full bg-emerald-600" />
-              {saving ? "Saving..." : "Draft"}
+              {saving ? t("phone.saving") : t("resume.draft")}
             </span>
             <button onClick={save} disabled={saving || loading}
               className="inline-flex h-10 items-center gap-2 rounded bg-emerald-800 px-4 text-sm font-semibold text-white transition hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50">
               <Save size={16} />
-              {saving ? "Saving..." : "Save draft"}
+              {saving ? t("phone.saving") : t("resume.saveDraft")}
             </button>
           </div>
         </div>
@@ -225,21 +227,21 @@ export default function ResumeBuilder() {
         <section className="min-w-0">
           <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-sm font-medium text-slate-500">Build your profile</p>
-              <h1 className="mt-1 text-2xl font-bold tracking-normal text-slate-950">Your resume</h1>
+              <p className="text-sm font-medium text-slate-500">{t("resume.buildProfile")}</p>
+              <h1 className="mt-1 text-2xl font-bold tracking-normal text-slate-950">{t("resume.yourResume")}</h1>
             </div>
             <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
               <Check size={15} className="text-emerald-700" />
-              {sectionCount} sections added
+              {t("resume.sectionsAdded", { count: sectionCount })}
             </div>
           </div>
 
           {loading ? (
-            <div role="status" className="border-y border-slate-200 bg-white px-5 py-8 text-sm text-slate-600">Loading your resume...</div>
+            <div role="status" className="border-y border-slate-200 bg-white px-5 py-8 text-sm text-slate-600">{t("resume.loading")}</div>
           ) : (
             <div className="divide-y divide-slate-200 border-y border-slate-200 bg-white px-4 sm:px-6">
               <details open className="py-5">
-                <summary className="cursor-pointer list-none text-base font-semibold text-slate-900">Personal details</summary>
+                <summary className="cursor-pointer list-none text-base font-semibold text-slate-900">{t("resume.personalDetails")}</summary>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <Field label="Full name" value={resume.personal.fullName} placeholder="Your name"
                     onChange={(value) => updatePersonal("fullName", value)} />
@@ -247,22 +249,22 @@ export default function ResumeBuilder() {
                     onChange={(value) => updatePersonal("email", value)} />
                   <Field label="Phone" type="tel" value={resume.personal.phone} placeholder="+1 555 000 0000"
                     onChange={(value) => updatePersonal("phone", value)} />
-                  <Field label="Location" value={resume.personal.location} placeholder="City, country"
+                  <Field label={t("resume.location")} value={resume.personal.location} placeholder={t("resume.cityCountry")}
                     onChange={(value) => updatePersonal("location", value)} />
                   <div className="sm:col-span-2 flex items-center gap-4 border border-dashed border-slate-300 p-3 rounded bg-slate-50">
                     {resume.personal?.photoUrl ? (
                       <img src={resume.personal.photoUrl} alt="Profile" className="h-16 w-16 rounded-full object-cover border-2 border-emerald-700" />
                     ) : (
                       <div className="h-16 w-16 rounded-full bg-slate-200 flex items-center justify-center text-xs text-slate-500 font-medium border">
-                        No photo
+                        {t("resume.noPhoto")}
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <span className="block text-xs font-semibold text-slate-800">Profile Photo</span>
-                      <p className="text-xs text-slate-500 mb-2">Upload a professional photo for your resume (PNG/JPG under 2MB)</p>
+                      <span className="block text-xs font-semibold text-slate-800">{t("resume.profilePhoto")}</span>
+                      <p className="text-xs text-slate-500 mb-2">{t("resume.photoInstructions")}</p>
                       <div className="flex items-center gap-2">
                         <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 transition shadow-sm">
-                          Choose file
+                          {t("resume.chooseFile")}
                           <input type="file" accept="image/*" className="hidden" onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (file) {
@@ -275,7 +277,7 @@ export default function ResumeBuilder() {
                         </label>
                         {resume.personal?.photoUrl && (
                           <button type="button" onClick={() => updatePersonal("photoUrl", "")} className="text-xs text-red-600 hover:underline font-medium">
-                            Remove
+                            {t("common.delete")}
                           </button>
                         )}
                       </div>
@@ -363,9 +365,9 @@ export default function ResumeBuilder() {
                     </select>
                   </label>
                   <label className="block sm:col-span-2">
-                    <span className="mb-1.5 block text-xs font-semibold text-slate-600">Accent color</span>
+                    <span className="mb-1.5 block text-xs font-semibold text-slate-600">{t("resume.accentColor")}</span>
                     <span className="flex h-[42px] items-center gap-3 border border-slate-300 px-2.5 rounded bg-white">
-                      <input aria-label="Accent color" type="color" value={resume.themeColor}
+                        <input aria-label={t("resume.accentColor")} type="color" value={resume.themeColor}
                         onChange={(event) => setResume({ ...resume, themeColor: event.target.value })}
                         className="h-7 w-9 cursor-pointer border-0 bg-transparent p-0" />
                       <span className="text-sm uppercase text-slate-600 font-mono">{resume.themeColor}</span>
@@ -379,41 +381,41 @@ export default function ResumeBuilder() {
           <section className="mt-6 border border-slate-200 bg-white p-4 sm:p-5" aria-labelledby="generate-title">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.1em] text-emerald-800">Ready to export</p>
-                <h2 id="generate-title" className="mt-1 text-lg font-semibold">Generate your PDF</h2>
-                <p className="mt-1 text-sm text-slate-600">Email verification required · ₹50 one-time</p>
+                <p className="text-xs font-bold uppercase tracking-[0.1em] text-emerald-800">{t("resume.readyToExport")}</p>
+                  <h2 id="generate-title" className="mt-1 text-lg font-semibold">{t("resume.generatePdf")}</h2>
+                  <p className="mt-1 text-sm text-slate-600">{t("resume.emailVerificationPrice")}</p>
               </div>
               {resume.status === "generated" && (
                 <button
                   type="button"
                   onClick={() =>
                     downloadResume(String(id), resume.personal?.fullName || "resume")
-                      .catch(() => toast.error("Could not download the PDF"))
+                      .catch(() => toast.error(t("resume.downloadFailed")))
                   }
                   className="inline-flex h-10 items-center gap-2 border border-emerald-800 px-3 text-sm font-semibold text-emerald-900 hover:bg-emerald-50"
                 >
-                  <Download size={16} /> Download PDF
+                  <Download size={16} /> {t("resume.downloadPdf")}
                 </button>
               )}
             </div>
             {resume.pdfOutdated && (
               <p className="mt-3 text-xs text-amber-700">
-                You've edited this resume since the PDF was generated. Generate again (₹50) to update it.
+                {t("resume.pdfOutdated")}
               </p>
             )}
             {genState === "idle" ? (
               <button onClick={requestOtp} disabled={saving || loading}
                 className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 bg-emerald-800 px-4 text-sm font-semibold text-white hover:bg-emerald-900 disabled:opacity-50 sm:w-auto">
-                <Download size={16} /> Verify email &amp; generate
+                <Download size={16} /> {t("resume.verifyEmailGenerate")}
               </button>
             ) : (
               <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                <input aria-label="Email verification code" inputMode="numeric" autoComplete="one-time-code"
-                  className={`${INPUT_CLASS} sm:max-w-56`} placeholder="6-digit email code" value={code}
+                <input aria-label={t("auth.verificationCode")} inputMode="numeric" autoComplete="one-time-code"
+                  className={`${INPUT_CLASS} sm:max-w-56`} placeholder={t("resume.emailCodePlaceholder")} value={code}
                   onChange={(event) => setCode(event.target.value)} />
                 <button onClick={verifyAndPay} disabled={!code.trim()}
                   className="h-11 bg-emerald-800 px-5 text-sm font-semibold text-white hover:bg-emerald-900 disabled:opacity-50">
-                  Verify &amp; pay ₹50
+                  {t("resume.verifyPay")}
                 </button>
               </div>
             )}
@@ -423,10 +425,10 @@ export default function ResumeBuilder() {
         <aside className="min-w-0 lg:sticky lg:top-5">
           <div className="mb-3 flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-500">Live preview</p>
+              <p className="text-sm font-medium text-slate-500">{t("resume.livePreview")}</p>
               <h2 className="mt-0.5 text-lg font-semibold text-slate-900">{resume.template} template</h2>
             </div>
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500"><Eye size={15} /> Updates as you type</span>
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500"><Eye size={15} /> {t("resume.updatesAsType")}</span>
           </div>
           <article
             className="mx-auto min-h-[760px] max-w-[620px] overflow-hidden border border-slate-200 bg-white px-7 py-8 shadow-[0_12px_40px_rgba(15,23,42,0.08)] sm:px-10 sm:py-11"

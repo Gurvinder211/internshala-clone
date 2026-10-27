@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { Bell, Heart, MessageCircle, Share2, UserPlus, UserCheck, AtSign, CheckCheck } from "lucide-react";
 import Link from "next/link";
 import api from "@/lib/api";
+import { useTranslation } from "next-i18next/pages";
 
 type NotificationItem = {
   _id: string;
@@ -13,24 +14,25 @@ type NotificationItem = {
 };
 
 const TYPE_CONFIG = {
-  like: { text: "liked your post", icon: Heart, tone: "text-rose-600 bg-rose-50" },
-  comment: { text: "commented on your post", icon: MessageCircle, tone: "text-blue-600 bg-blue-50" },
-  share: { text: "shared your post", icon: Share2, tone: "text-emerald-600 bg-emerald-50" },
-  friend_request: { text: "sent you a friend request", icon: UserPlus, tone: "text-indigo-600 bg-indigo-50" },
-  friend_accept: { text: "accepted your friend request", icon: UserCheck, tone: "text-emerald-600 bg-emerald-50" },
-  mention: { text: "mentioned you in a post or comment", icon: AtSign, tone: "text-purple-600 bg-purple-50" },
-  follow: { text: "started following you", icon: UserPlus, tone: "text-amber-600 bg-amber-50" },
+  like: { text: "liked", icon: Heart, tone: "text-rose-600 bg-rose-50" },
+  comment: { text: "commented", icon: MessageCircle, tone: "text-blue-600 bg-blue-50" },
+  share: { text: "shared", icon: Share2, tone: "text-emerald-600 bg-emerald-50" },
+  friend_request: { text: "friendRequest", icon: UserPlus, tone: "text-indigo-600 bg-indigo-50" },
+  friend_accept: { text: "friendAccepted", icon: UserCheck, tone: "text-emerald-600 bg-emerald-50" },
+  mention: { text: "mentioned", icon: AtSign, tone: "text-purple-600 bg-purple-50" },
+  follow: { text: "followed", icon: UserPlus, tone: "text-amber-600 bg-amber-50" },
 };
 
-function formatTime(dateStr: string) {
+function formatTime(dateStr: string, t: (key: string, options?: Record<string, unknown>) => string, language: string) {
   const elapsed = Date.now() - new Date(dateStr).getTime();
-  if (elapsed < 60_000) return "just now";
-  if (elapsed < 3_600_000) return `${Math.floor(elapsed / 60_000)}m ago`;
-  if (elapsed < 86_400_000) return `${Math.floor(elapsed / 3_600_000)}h ago`;
-  return new Date(dateStr).toLocaleDateString("en-IN", { month: "short", day: "numeric" });
+  if (elapsed < 60_000) return t("notifications.justNow");
+  if (elapsed < 3_600_000) return t("notifications.minutesAgo", { count: Math.floor(elapsed / 60_000) });
+  if (elapsed < 86_400_000) return t("notifications.hoursAgo", { count: Math.floor(elapsed / 3_600_000) });
+  return new Date(dateStr).toLocaleDateString(language, { month: "short", day: "numeric" });
 }
 
 export default function NotificationsDropdown() {
+  const { t, i18n } = useTranslation("common");
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
@@ -81,7 +83,7 @@ export default function NotificationsDropdown() {
           if (!open && unreadCount > 0) void markAllRead();
         }}
         className="relative grid h-10 w-10 place-items-center rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50 focus:outline-none"
-        aria-label="Notifications"
+        aria-label={t("notifications.title")}
       >
         <Bell size={18} />
         {unreadCount > 0 && (
@@ -94,17 +96,17 @@ export default function NotificationsDropdown() {
       {open && (
         <div className="absolute right-0 z-50 mt-2 w-80 sm:w-96 rounded-2xl border border-gray-100 bg-white shadow-2xl ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-100 overflow-hidden">
           <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 bg-gray-50/70">
-            <h3 className="text-sm font-bold text-gray-900">Notifications</h3>
+            <h3 className="text-sm font-bold text-gray-900">{t("notifications.title")}</h3>
             {unreadCount > 0 ? (
               <button
                 type="button"
                 onClick={markAllRead}
                 className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-800 hover:text-emerald-950"
               >
-                <CheckCheck size={14} /> Mark all read
+                <CheckCheck size={14} /> {t("notifications.markAllRead")}
               </button>
             ) : (
-              <span className="text-xs text-gray-400">All caught up</span>
+              <span className="text-xs text-gray-400">{t("notifications.allCaughtUp")}</span>
             )}
           </div>
 
@@ -112,14 +114,14 @@ export default function NotificationsDropdown() {
             {notifications.length === 0 ? (
               <div className="py-8 text-center text-xs text-gray-400">
                 <Bell size={24} className="mx-auto text-gray-300 mb-2" />
-                No notifications yet.
+                {t("notifications.none")}
               </div>
             ) : (
               notifications.map((n) => {
                 const cfg = TYPE_CONFIG[n.type] || TYPE_CONFIG.like;
                 const Icon = cfg.icon;
                 const author = n.fromUserId || {};
-                const name = author.name || "A community member";
+                const name = author.name || t("notifications.communityMember");
                 const content = (
                   <div
                     key={n._id}
@@ -132,9 +134,9 @@ export default function NotificationsDropdown() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-gray-800">
-                        <span className="font-semibold text-gray-950">{name}</span> {cfg.text}.
+                        <span className="font-semibold text-gray-950">{name}</span> {t(`notifications.${cfg.text}`)}.
                       </p>
-                      <span className="mt-1 block text-[11px] text-gray-400">{formatTime(n.createdAt)}</span>
+                      <span className="mt-1 block text-[11px] text-gray-400">{formatTime(n.createdAt, t, i18n.resolvedLanguage || "en")}</span>
                     </div>
                   </div>
                 );

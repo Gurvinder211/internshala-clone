@@ -12,6 +12,7 @@ import Link from "next/link";
 import axios from "axios";
 import { selectuser } from "@/Feature/Userslice";
 import { useSelector } from "react-redux";
+import { useTranslation } from "next-i18next/pages";
 const Applications = [
   {
     _id: "1",
@@ -49,6 +50,7 @@ const getStatusColor = (status: any) => {
   }
 };
 const index = () => {
+  const { t } = useTranslation("common");
   const [searchTerm, setsearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
   const user=useSelector(selectuser)
@@ -88,9 +90,9 @@ const index = () => {
         <div className="bg-white rounded-lg shadow-sm">
           {/* Header */}
           <div className="border-b border-gray-200 px-6 py-4">
-            <h1 className="text-2xl font-bold text-gray-900">My Applications</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t("applications.myApplications")}</h1>
             <p className="mt-1 text-sm text-gray-500">
-              Track and manage your job and intenrhsip applications
+              {t("applications.trackAndManage")}
             </p>
           </div>
 
@@ -103,7 +105,7 @@ const index = () => {
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setsearchTerm(e.target.value)}
-                    placeholder="Search by company, category, or applicant..."
+                    placeholder={t("applications.searchPlaceholder")}
                     className="text-black w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <Mail className="absolute top-3 left-3 text-gray-400" />
